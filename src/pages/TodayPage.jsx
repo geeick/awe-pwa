@@ -5,6 +5,8 @@ export default function TodayPage({
   intention,
   selectedMood,
   pageError,
+  journeyStats,
+  journeyLoading,
   onEditIntention,
   onStartPractice,
   onSaveMood
@@ -56,9 +58,18 @@ export default function TodayPage({
       <article className="card journey-card">
         <p className="eyebrow">YOUR JOURNEY</p>
         <div className="journey-grid">
-          <div className="journey-item"><Flame size={35} strokeWidth={1.4} /><strong>17</strong><span>day streak</span></div>
-          <div className="journey-item middle"><Sprout size={35} strokeWidth={1.4} /><strong>237</strong><span>practices completed</span></div>
-          <div className="journey-item meaning"><Mountain size={35} strokeWidth={1.4} /><b>Meaning Score</b><div className="score-bars">{Array.from({ length: 10 }).map((_, index) => <span key={index} className={index < 8 ? 'filled' : ''} />)}</div><small>8.2 / 10</small></div>
+          <div className="journey-item"><Flame size={35} strokeWidth={1.4} /><strong>{journeyLoading ? '—' : journeyStats.streak}</strong><span>day streak</span></div>
+          <div className="journey-item middle"><Sprout size={35} strokeWidth={1.4} /><strong>{journeyLoading ? '—' : journeyStats.completedPractices}</strong><span>practices completed</span></div>
+          <div className="journey-item meaning">
+            <Mountain size={35} strokeWidth={1.4} />
+            <b>Meaning Score</b>
+            <div className="score-bars">
+              {Array.from({ length: 10 }).map((_, index) => (
+                <span key={index} className={!journeyLoading && index < Math.round(journeyStats.meaningScore) ? 'filled' : ''} />
+              ))}
+            </div>
+            <small>{journeyLoading ? 'Calculating…' : `${journeyStats.meaningScore.toFixed(1)} / 10`}</small>
+          </div>
         </div>
       </article>
       <article className="quote-card"><Quote size={39} strokeWidth={1.6} /><div><p>We are a way for the cosmos<br />to know itself.</p><span>— Carl Sagan</span></div></article>

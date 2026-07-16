@@ -10,6 +10,7 @@ import TodayPage from './pages/TodayPage';
 import PracticePage from './pages/PracticePage';
 import DiaryPage from './pages/DiaryPage';
 import ProfilePage from './pages/ProfilePage';
+import useJourneyStats from './hooks/useJourneyStats';
 import './styles.css';
 
 function App() {
@@ -46,6 +47,8 @@ function App() {
   const [diaryEntries, setDiaryEntries] = useState([]);
   const [diaryLoading, setDiaryLoading] = useState(false);
   const [diaryPhotoUrls, setDiaryPhotoUrls] = useState({});
+
+  const { stats: journeyStats, loading: journeyLoading, refresh: refreshJourneyStats } = useJourneyStats(session?.user?.id);
 
   useEffect(() => {
     const handler = (event) => {
@@ -209,9 +212,27 @@ function App() {
 
   const userName = session?.user?.user_metadata?.display_name || session?.user?.email?.split('@')[0] || 'there';
 
-  function saveMood(label) {
+  async function saveMood(label) {
     setSelectedMood(label);
     localStorage.setItem('groundedMood', label);
+
+    if (!session?.user) return;
+
+    const moodScore = { Hard: 1, Okay: 2, Good: 3, Great: 4, Amazing: 5 }[label];
+    const { error } = await supabase
+      .from('daily_check_ins')
+      .upsert(
+        {
+          user_id: session.user.id,
+          check_in_date: new Date().toISOString().slice(0, 10),
+          mood_label: label,
+          mood_score: moodScore
+        },
+        { onConflict: 'user_id,check_in_date' }
+      );
+
+    if (error) setPageError(error.message);
+    else refreshJourneyStats();
   }
 
   async function saveIntention(event) {
@@ -254,10 +275,29 @@ function App() {
       setStarredLoading(false);
     }
 
+    if (session?.user) {
+      const { error } = await supabase
+        .from('daily_intentions')
+        .upsert(
+          {
+            user_id: session.user.id,
+            intention_date: new Date().toISOString().slice(0, 10),
+            intention_text: next
+          },
+          { onConflict: 'user_id,intention_date' }
+        );
+
+      if (error) {
+        setIntentionError(error.message);
+        return;
+      }
+    }
+
     setIntention(next);
     localStorage.setItem('groundedIntention', next);
     setShareCustomIntention(false);
     setIsIntentionModalOpen(false);
+    refreshJourneyStats();
   }
 
   function closeIntentionModal() {
@@ -438,6 +478,7 @@ function App() {
     closePracticeSession();
     setActiveTab('Diary');
     setPracticeSessionSaving(false);
+    refreshJourneyStats();
   }
 
   async function installApp() {
@@ -542,6 +583,8 @@ function App() {
           intention={intention}
           selectedMood={selectedMood}
           pageError={pageError}
+          journeyStats={journeyStats}
+          journeyLoading={journeyLoading}
           onEditIntention={openIntentionChooser}
           onStartPractice={startTodaysPractice}
           onSaveMood={saveMood}
