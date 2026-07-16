@@ -31,7 +31,21 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
+    if (!('serviceWorker' in navigator)) return;
+
+    if (import.meta.env.PROD) {
+      navigator.serviceWorker.register('/sw.js');
+      return;
+    }
+
+    // A production service worker can otherwise keep serving stale files on localhost.
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      registrations.forEach((registration) => registration.unregister());
+    });
+
+    if ('caches' in window) {
+      caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key))));
+    }
   }, []);
 
   const practiceText = useMemo(() => practiceDone ? 'Practice Completed' : 'Start Practice', [practiceDone]);
