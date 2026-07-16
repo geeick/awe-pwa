@@ -19,6 +19,9 @@ function App() {
   const [selectedMood, setSelectedMood] = useState(() => localStorage.getItem('groundedMood') || '');
   const [practiceDone, setPracticeDone] = useState(() => localStorage.getItem('groundedPracticeDone') === 'true');
   const [activeTab, setActiveTab] = useState('Today');
+  const [intention, setIntention] = useState(() => localStorage.getItem('groundedIntention') || 'I will pay attention to beauty.');
+  const [intentionDraft, setIntentionDraft] = useState(intention);
+  const [isEditingIntention, setIsEditingIntention] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
 
   useEffect(() => {
@@ -53,6 +56,20 @@ function App() {
   function saveMood(label) {
     setSelectedMood(label);
     localStorage.setItem('groundedMood', label);
+  }
+
+  function saveIntention(event) {
+    event.preventDefault();
+    const next = intentionDraft.trim();
+    if (!next) return;
+    setIntention(next);
+    localStorage.setItem('groundedIntention', next);
+    setIsEditingIntention(false);
+  }
+
+  function cancelIntentionEdit() {
+    setIntentionDraft(intention);
+    setIsEditingIntention(false);
   }
 
   function togglePractice() {
@@ -92,12 +109,42 @@ function App() {
       </section>
 
       <section className="content-stack">
-        <article className="card intention-card">
-          <div>
-            <p className="eyebrow">TODAY’S INTENTION</p>
-            <blockquote>“I will pay attention<br />to beauty.”</blockquote>
+        <article className={`card intention-card ${isEditingIntention ? 'editing' : ''}`}>
+          <div className="intention-content">
+            <div className="intention-heading">
+              <p className="eyebrow">TODAY’S INTENTION</p>
+              {!isEditingIntention && (
+                <button
+                  className="intention-edit-button"
+                  type="button"
+                  aria-label="Edit today’s intention"
+                  onClick={() => setIsEditingIntention(true)}
+                >
+                  <Pencil size={21} strokeWidth={1.7} />
+                </button>
+              )}
+            </div>
+
+            {isEditingIntention ? (
+              <form className="intention-form" onSubmit={saveIntention}>
+                <textarea
+                  value={intentionDraft}
+                  onChange={(event) => setIntentionDraft(event.target.value)}
+                  maxLength={140}
+                  rows={3}
+                  autoFocus
+                  aria-label="Today’s intention"
+                />
+                <div className="intention-actions">
+                  <button type="button" className="secondary-button" onClick={cancelIntentionEdit}>Cancel</button>
+                  <button type="submit" className="save-button" disabled={!intentionDraft.trim()}>Save</button>
+                </div>
+              </form>
+            ) : (
+              <blockquote>“{intention}”</blockquote>
+            )}
           </div>
-          <div className="botanical"><Leaf size={92} strokeWidth={1.1} /></div>
+          {!isEditingIntention && <div className="botanical"><Leaf size={92} strokeWidth={1.1} /></div>}
         </article>
 
         <article className="card practice-card">

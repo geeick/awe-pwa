@@ -333,3 +333,112 @@ button { font: inherit; }
     align-self: start;
   }
 }
+
+/* Editable daily intention */
+.intention-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.intention-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.intention-heading .eyebrow {
+  margin-bottom: 0;
+}
+
+.intention-edit-button {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 12px;
+  background: #ebe8e1;
+  color: #2f4037;
+  cursor: pointer;
+}
+
+.intention-edit-button:hover {
+  background: #dfddd5;
+}
+
+.intention-card blockquote {
+  margin-top: 12px;
+  overflow-wrap: anywhere;
+}
+
+.intention-card.editing {
+  align-items: stretch;
+}
+
+.intention-form {
+  margin-top: 14px;
+}
+
+.intention-form textarea {
+  width: 100%;
+  min-height: 108px;
+  resize: vertical;
+  border: 1px solid #b9c2b9;
+  border-radius: 14px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, .72);
+  color: #17352f;
+  font: 22px/1.45 'Libre Baskerville', serif;
+  outline: none;
+}
+
+.intention-form textarea:focus {
+  border-color: #356c50;
+  box-shadow: 0 0 0 3px rgba(53, 108, 80, .13);
+}
+
+.intention-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.secondary-button,
+.save-button {
+  min-width: 86px;
+  border: 0;
+  border-radius: 11px;
+  padding: 11px 16px;
+  font: 700 14px/1 'Inter', sans-serif;
+  cursor: pointer;
+}
+
+.secondary-button {
+  background: #e8e6df;
+  color: #30453b;
+}
+
+.save-button {
+  background: #356c50;
+  color: #fff;
+}
+
+.save-button:disabled {
+  cursor: not-allowed;
+  opacity: .45;
+}
+
+@media (max-width: 767px) {
+  .intention-edit-button {
+    width: 36px;
+    height: 36px;
+  }
+
+  .intention-form textarea {
+    min-height: 96px;
+    font-size: 19px;
+  }
+}
