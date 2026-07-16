@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
-  Bell, BookOpen, ChevronRight, CircleUserRound, Flame, Home, Leaf,
+  Bell, ChevronRight, CircleUserRound, Flame, Home, Leaf,
   BookHeart, Camera, CheckCircle2, Globe2, Image, LogIn, LogOut, Menu, Mountain, Pencil, Quote, Save, Sparkles, Sprout, Star, Sun,
-  Timer, Trash2, TreePine, UsersRound, X, Plus
+  Timer, Trash2, TreePine, UsersRound, X
 } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import './styles.css';
@@ -51,12 +51,6 @@ function App() {
   const [practices, setPractices] = useState([]);
   const [practicesLoading, setPracticesLoading] = useState(false);
   const [pageError, setPageError] = useState('');
-  const [commonplaceEntries, setCommonplaceEntries] = useState([]);
-  const [commonplaceForm, setCommonplaceForm] = useState({ quote_text: '', author: '', source_title: '', reflection: '' });
-  const [wonderEntries, setWonderEntries] = useState([]);
-  const [wonderDraft, setWonderDraft] = useState('');
-  const [wonderType, setWonderType] = useState('awe');
-  const [pageSubmitting, setPageSubmitting] = useState(false);
   const [selectedPractice, setSelectedPractice] = useState(null);
   const [practiceSessionNotes, setPracticeSessionNotes] = useState('');
   const [practiceSessionPhotos, setPracticeSessionPhotos] = useState([]);
@@ -163,38 +157,7 @@ function App() {
     return () => { active = false; };
   }, [activeTab]);
 
-  useEffect(() => {
-    if (activeTab !== 'Commonplace' || !session?.user) return;
-    let active = true;
-    setPageError('');
-    supabase
-      .from('saved_quotes')
-      .select('id, quote_text, author, source_title, reflection, created_at')
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (!active) return;
-        if (error) setPageError(error.message);
-        else setCommonplaceEntries(data || []);
-      });
-    return () => { active = false; };
-  }, [activeTab, session?.user?.id]);
 
-  useEffect(() => {
-    if (activeTab !== 'Wonder' || !session?.user) return;
-    let active = true;
-    setPageError('');
-    supabase
-      .from('journal_entries')
-      .select('id, body, entry_type, created_at')
-      .in('entry_type', ['awe', 'prayer', 'gratitude', 'freeform'])
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (!active) return;
-        if (error) setPageError(error.message);
-        else setWonderEntries(data || []);
-      });
-    return () => { active = false; };
-  }, [activeTab, session?.user?.id]);
 
 
   useEffect(() => {
@@ -374,52 +337,6 @@ function App() {
     setStarredIntentions((current) => current.map((saved) => saved.id === item.id ? data : saved));
   }
 
-  async function addCommonplaceEntry(event) {
-    event.preventDefault();
-    if (!session?.user) { openAuthModal('signin'); return; }
-    if (!commonplaceForm.quote_text.trim()) return;
-    setPageSubmitting(true);
-    setPageError('');
-    const payload = {
-      user_id: session.user.id,
-      quote_text: commonplaceForm.quote_text.trim(),
-      author: commonplaceForm.author.trim() || null,
-      source_title: commonplaceForm.source_title.trim() || null,
-      reflection: commonplaceForm.reflection.trim() || null
-    };
-    const { data, error } = await supabase.from('saved_quotes').insert(payload).select().single();
-    if (error) setPageError(error.message);
-    else {
-      setCommonplaceEntries((current) => [data, ...current]);
-      setCommonplaceForm({ quote_text: '', author: '', source_title: '', reflection: '' });
-    }
-    setPageSubmitting(false);
-  }
-
-  async function removeCommonplaceEntry(id) {
-    const { error } = await supabase.from('saved_quotes').delete().eq('id', id);
-    if (error) setPageError(error.message);
-    else setCommonplaceEntries((current) => current.filter((item) => item.id !== id));
-  }
-
-  async function addWonderEntry(event) {
-    event.preventDefault();
-    if (!session?.user) { openAuthModal('signin'); return; }
-    if (!wonderDraft.trim()) return;
-    setPageSubmitting(true);
-    setPageError('');
-    const { data, error } = await supabase
-      .from('journal_entries')
-      .insert({ user_id: session.user.id, body: wonderDraft.trim(), entry_type: wonderType })
-      .select('id, body, entry_type, created_at')
-      .single();
-    if (error) setPageError(error.message);
-    else {
-      setWonderEntries((current) => [data, ...current]);
-      setWonderDraft('');
-    }
-    setPageSubmitting(false);
-  }
 
   function startPracticeSession(practice) {
     if (!session?.user) {
@@ -683,7 +600,7 @@ function App() {
           </article>
 
           <article className="card reflection-card">
-            <div className="reflection-heading"><div><p className="eyebrow">EVENING REFLECTION</p><h2>How did today change you?</h2></div><button className="edit-button" aria-label="Write reflection" onClick={() => setActiveTab('Wonder')}><Pencil size={31} strokeWidth={1.6} /></button></div>
+            <div className="reflection-heading"><div><p className="eyebrow">EVENING REFLECTION</p><h2>How did today change you?</h2></div></div>
             <p className="rate-label">Rate today</p>
             <div className="mood-row">{moods.map((mood) => <button className={`mood ${selectedMood === mood.label ? 'selected' : ''}`} key={mood.label} onClick={() => saveMood(mood.label)}><span className="mood-face">{mood.face}</span><span>{mood.label}</span></button>)}</div>
           </article>
@@ -702,28 +619,7 @@ function App() {
         </section>
       )}
 
-      {activeTab === 'Commonplace' && (
-        <section className="app-page">
-          <header className="page-heading"><p className="eyebrow">COMMONPLACE BOOK</p><h2>Keep the words you want to live with</h2><p>Save passages, ideas, and your own notes about why they matter.</p></header>
-          {!session ? <div className="page-empty card"><BookOpen size={34} /><h3>Sign in to build your commonplace book</h3><button className="save-button" onClick={() => openAuthModal('signin')}>Sign in</button></div> : <>
-            <form className="page-form card" onSubmit={addCommonplaceEntry}><label>Quote or passage<textarea value={commonplaceForm.quote_text} onChange={(e) => setCommonplaceForm((v) => ({...v, quote_text:e.target.value}))} required /></label><div className="form-row"><label>Author<input value={commonplaceForm.author} onChange={(e) => setCommonplaceForm((v) => ({...v, author:e.target.value}))} /></label><label>Source<input value={commonplaceForm.source_title} onChange={(e) => setCommonplaceForm((v) => ({...v, source_title:e.target.value}))} /></label></div><label>Your reflection<textarea value={commonplaceForm.reflection} onChange={(e) => setCommonplaceForm((v) => ({...v, reflection:e.target.value}))} /></label><button className="auth-submit" disabled={pageSubmitting}><Plus size={18} /> Save passage</button></form>
-            {pageError && <p className="intention-alert">{pageError}</p>}
-            <div className="entry-list">{commonplaceEntries.length === 0 ? <p className="page-status">Your saved passages will appear here.</p> : commonplaceEntries.map((entry) => <article className="entry-card" key={entry.id}><button className="entry-delete" onClick={() => removeCommonplaceEntry(entry.id)}><Trash2 size={17}/></button><blockquote>“{entry.quote_text}”</blockquote><p className="entry-source">{entry.author || 'Unknown'}{entry.source_title ? ` · ${entry.source_title}` : ''}</p>{entry.reflection && <p>{entry.reflection}</p>}</article>)}</div>
-          </>}
-        </section>
-      )}
 
-      {activeTab === 'Wonder' && (
-        <section className="app-page">
-          <header className="page-heading"><p className="eyebrow">WONDER & REFLECTION</p><h2>Notice what makes life feel larger</h2><p>Record awe, gratitude, prayer, or an honest reflection.</p></header>
-          <div className="prompt-strip"><button onClick={() => {setWonderType('awe');setWonderDraft('Something that filled me with awe today was…')}}>Awe</button><button onClick={() => {setWonderType('gratitude');setWonderDraft('I am grateful for…')}}>Gratitude</button><button onClick={() => {setWonderType('prayer');setWonderDraft('May I…')}}> Prayer</button><button onClick={() => {setWonderType('freeform');setWonderDraft('')}}>Free write</button></div>
-          {!session ? <div className="page-empty card"><Sparkles size={34}/><h3>Sign in to keep your reflections</h3><button className="save-button" onClick={() => openAuthModal('signin')}>Sign in</button></div> : <>
-            <form className="page-form card" onSubmit={addWonderEntry}><label>Entry type<select value={wonderType} onChange={(e) => setWonderType(e.target.value)}><option value="awe">Awe</option><option value="gratitude">Gratitude</option><option value="prayer"> Prayer</option><option value="freeform">Freeform</option></select></label><label>Write<textarea value={wonderDraft} onChange={(e) => setWonderDraft(e.target.value)} placeholder="What did you notice?" required /></label><button className="auth-submit" disabled={pageSubmitting}><Plus size={18}/> Save reflection</button></form>
-            {pageError && <p className="intention-alert">{pageError}</p>}
-            <div className="entry-list">{wonderEntries.length === 0 ? <p className="page-status">Your reflections will appear here.</p> : wonderEntries.map((entry) => <article className="entry-card" key={entry.id}><span className="category-chip">{entry.entry_type}</span><p>{entry.body}</p><small>{new Date(entry.created_at).toLocaleDateString()}</small></article>)}</div>
-          </>}
-        </section>
-      )}
 
       {activeTab === 'Diary' && (
         <section className="app-page diary-page">
@@ -737,7 +633,7 @@ function App() {
           <header className="page-heading"><p className="eyebrow">YOUR PROFILE</p><h2>{session ? userName : 'Your journey'}</h2><p>Manage your saved intentions and account.</p></header>
           {!session ? <div className="page-empty card"><CircleUserRound size={38}/><h3>Sign in to see your profile</h3><button className="save-button" onClick={() => openAuthModal('signin')}>Sign in</button></div> : <>
             <article className="profile-card card"><CircleUserRound size={46}/><div><h3>{userName}</h3><p>{session.user.email}</p></div><button className="secondary-button" onClick={signOut}><LogOut size={17}/> Sign out</button></article>
-            <div className="profile-stats"><article className="card"><strong>{starredIntentions.length}</strong><span>starred intentions</span></article><article className="card"><strong>{starredIntentions.filter((item) => item.is_public).length}</strong><span>shared publicly</span></article><article className="card"><strong>{commonplaceEntries.length}</strong><span>saved passages</span></article></div>
+            <div className="profile-stats"><article className="card"><strong>{starredIntentions.length}</strong><span>starred intentions</span></article><article className="card"><strong>{starredIntentions.filter((item) => item.is_public).length}</strong><span>shared publicly</span></article><article className="card"><strong>{diaryEntries.length}</strong><span>diary entries</span></article></div>
             <section className="profile-section"><h3>Your intentions</h3>{starredIntentions.length === 0 ? <p className="page-status">No starred intentions yet.</p> : starredIntentions.map((item) => <div className="profile-intention" key={item.id}><span>“{item.text}”</span><button className={`visibility-button ${item.is_public ? 'public' : ''}`} onClick={() => updateIntentionVisibility(item, !item.is_public)}>{item.is_public ? 'Public' : 'Private'}</button></div>)}</section>
           </>}
         </section>
@@ -956,8 +852,7 @@ function App() {
 
       <nav className="bottom-nav" aria-label="Primary navigation">
         {[
-          ['Today', Home], ['Practice', Sprout], ['Commonplace', BookOpen],
-          ['Wonder', Sparkles], ['Diary', BookHeart], ['Me', CircleUserRound]
+          ['Today', Home], ['Practice', Sprout], ['Diary', BookHeart], ['Me', CircleUserRound]
         ].map(([label, Icon]) => (
           <button key={label} className={activeTab === label ? 'active' : ''} onClick={() => label === 'Me' && !session ? openAuthModal('signin') : setActiveTab(label)}>
             <Icon size={28} strokeWidth={1.7} />

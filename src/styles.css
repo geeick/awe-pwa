@@ -91,7 +91,7 @@ button { font: inherit; }
 .quote-card p { margin: 0 0 10px; font-family: 'Libre Baskerville', serif; font-size: 19px; line-height: 1.55; }
 .quote-card span { opacity: .78; font-size: 13px; }
 
-.bottom-nav { position: fixed; z-index: 30; bottom: 0; left: 50%; transform: translateX(-50%); width: min(100%,480px); display: grid; grid-template-columns: repeat(6,1fr); gap: 2px; padding: 12px 8px calc(10px + env(safe-area-inset-bottom)); background: rgba(250,247,241,.96); border-top: 1px solid rgba(51,70,60,.08); backdrop-filter: blur(14px); }
+.bottom-nav { position: fixed; z-index: 30; bottom: 0; left: 50%; transform: translateX(-50%); width: min(100%,480px); display: grid; grid-template-columns: repeat(4,1fr); gap: 2px; padding: 12px 8px calc(10px + env(safe-area-inset-bottom)); background: rgba(250,247,241,.96); border-top: 1px solid rgba(51,70,60,.08); backdrop-filter: blur(14px); }
 .bottom-nav button { border: 0; background: transparent; color: #2f3934; display: grid; justify-items: center; gap: 4px; padding: 3px 1px; font-size: 10px; cursor: pointer; }
 .bottom-nav button.active { color: var(--green); font-weight: 700; }
 
@@ -236,7 +236,7 @@ button { font: inherit; }
     width: 104px;
     height: 100vh;
     grid-template-columns: 1fr;
-    grid-template-rows: repeat(6, min-content);
+    grid-template-rows: repeat(4, min-content);
     align-content: center;
     gap: 12px;
     padding: 24px 12px;
