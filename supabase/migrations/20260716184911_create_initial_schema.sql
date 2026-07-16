@@ -282,8 +282,8 @@ values
     true
 ),
 (
-    'Secular Prayer',
-    'secular-prayer',
+    'Prayer',
+    'prayer',
     'Turn your hopes and values into deliberate words.',
     'Write or speak three sentences beginning with “May I,” “May we,” or “Let me.” You do not need to address a supernatural being.',
     'reflection',

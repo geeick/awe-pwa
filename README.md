@@ -1,6 +1,6 @@
 # Grounded PWA
 
-A React + Vite progressive web app based on the supplied secular-spirituality homepage mockup.
+A React + Vite progressive web app.
 
 ## Run locally
 
