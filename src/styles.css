@@ -1393,3 +1393,114 @@ button { font: inherit; }
   .diary-card-heading { display: grid; }
   .diary-card-heading small { text-align: left; }
 }
+
+/* Header account and notification controls */
+.topbar-actions {
+  margin-left: auto;
+}
+
+.notification-area {
+  position: relative;
+}
+
+.notification-button {
+  border-radius: 50%;
+}
+
+.notification-button:hover,
+.notification-button.active {
+  background: rgba(249, 245, 238, .72);
+}
+
+.notification-panel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 10px);
+  right: 0;
+  width: min(340px, calc(100vw - 32px));
+  border: 1px solid rgba(49, 93, 69, .14);
+  border-radius: 20px;
+  padding: 20px;
+  background: rgba(249, 245, 238, .98);
+  color: #26332e;
+  box-shadow: 0 22px 55px rgba(28, 45, 37, .24);
+  backdrop-filter: blur(14px);
+}
+
+.notification-panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.notification-panel-heading .eyebrow {
+  margin-bottom: 5px;
+}
+
+.notification-panel h2 {
+  margin: 0;
+  font: 700 22px/1.2 'Libre Baskerville', serif;
+}
+
+.notification-panel > p {
+  margin: 14px 0 18px;
+  color: #536159;
+  line-height: 1.5;
+}
+
+.notification-close {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: #ebe7df;
+  color: #30453b;
+  cursor: pointer;
+}
+
+.notification-permission-button,
+.notification-enabled {
+  width: 100%;
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border-radius: 12px;
+  font-weight: 700;
+}
+
+.notification-permission-button {
+  border: 0;
+  background: linear-gradient(90deg, #315d45, #416e54);
+  color: white;
+  cursor: pointer;
+}
+
+.notification-permission-button:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+.notification-enabled {
+  background: #e1ebdf;
+  color: #28533c;
+}
+
+@media (max-width: 600px) {
+  .topbar {
+    padding-inline: 16px;
+  }
+
+  .notification-panel {
+    position: fixed;
+    top: calc(72px + env(safe-area-inset-top));
+    right: 16px;
+    left: 16px;
+    width: auto;
+  }
+}
+
