@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   Bell, BookOpen, ChevronRight, CircleUserRound, Flame, Home, Leaf,
-  Globe2, LogIn, LogOut, Menu, Mountain, Pencil, Quote, Sparkles, Sprout, Star, Sun,
+  BookHeart, Camera, CheckCircle2, Globe2, Image, LogIn, LogOut, Menu, Mountain, Pencil, Quote, Save, Sparkles, Sprout, Star, Sun,
   Timer, Trash2, TreePine, UsersRound, X, Plus
 } from 'lucide-react';
 import { supabase } from './lib/supabase';
@@ -58,6 +58,14 @@ function App() {
   const [wonderDraft, setWonderDraft] = useState('');
   const [wonderType, setWonderType] = useState('awe');
   const [pageSubmitting, setPageSubmitting] = useState(false);
+  const [selectedPractice, setSelectedPractice] = useState(null);
+  const [practiceSessionNotes, setPracticeSessionNotes] = useState('');
+  const [practiceSessionPhotos, setPracticeSessionPhotos] = useState([]);
+  const [practiceSessionSaving, setPracticeSessionSaving] = useState(false);
+  const [practiceSessionError, setPracticeSessionError] = useState('');
+  const [diaryEntries, setDiaryEntries] = useState([]);
+  const [diaryLoading, setDiaryLoading] = useState(false);
+  const [diaryPhotoUrls, setDiaryPhotoUrls] = useState({});
 
   useEffect(() => {
     const handler = (event) => {
@@ -186,6 +194,50 @@ function App() {
         if (error) setPageError(error.message);
         else setWonderEntries(data || []);
       });
+    return () => { active = false; };
+  }, [activeTab, session?.user?.id]);
+
+
+  useEffect(() => {
+    if (activeTab !== 'Diary' || !session?.user) return;
+    let active = true;
+    setDiaryLoading(true);
+    setPageError('');
+
+    async function loadDiary() {
+      const { data, error } = await supabase
+        .from('practice_diary_entries')
+        .select('id, practice_id, practice_title, notes, photo_paths, status, duration_minutes, started_at, completed_at, created_at')
+        .order('created_at', { ascending: false });
+
+      if (!active) return;
+      if (error) {
+        setPageError(error.message);
+        setDiaryLoading(false);
+        return;
+      }
+
+      const entries = data || [];
+      setDiaryEntries(entries);
+      const paths = entries.flatMap((entry) => entry.photo_paths || []);
+      if (paths.length) {
+        const { data: signed, error: signedError } = await supabase.storage
+          .from('practice-diary')
+          .createSignedUrls(paths, 3600);
+        if (!signedError && active) {
+          const nextUrls = {};
+          (signed || []).forEach((item, index) => {
+            if (item.signedUrl) nextUrls[paths[index]] = item.signedUrl;
+          });
+          setDiaryPhotoUrls(nextUrls);
+        }
+      } else {
+        setDiaryPhotoUrls({});
+      }
+      setDiaryLoading(false);
+    }
+
+    loadDiary();
     return () => { active = false; };
   }, [activeTab, session?.user?.id]);
 
@@ -377,6 +429,92 @@ function App() {
     localStorage.setItem('groundedPracticeDone', String(next));
   }
 
+
+  function startPracticeSession(practice) {
+    if (!session?.user) {
+      openAuthModal('signin');
+      return;
+    }
+    setSelectedPractice(practice);
+    setPracticeSessionNotes('');
+    setPracticeSessionPhotos([]);
+    setPracticeSessionError('');
+  }
+
+  function closePracticeSession() {
+    if (practiceSessionSaving) return;
+    practiceSessionPhotos.forEach((photo) => URL.revokeObjectURL(photo.preview));
+    setSelectedPractice(null);
+    setPracticeSessionNotes('');
+    setPracticeSessionPhotos([]);
+    setPracticeSessionError('');
+  }
+
+  function addPracticePhotos(event) {
+    const files = Array.from(event.target.files || []);
+    const accepted = files.filter((file) => file.type.startsWith('image/')).slice(0, 6 - practiceSessionPhotos.length);
+    const next = accepted.map((file) => ({ file, preview: URL.createObjectURL(file), id: `${file.name}-${file.lastModified}-${Math.random()}` }));
+    setPracticeSessionPhotos((current) => [...current, ...next]);
+    event.target.value = '';
+  }
+
+  function removePracticePhoto(photoId) {
+    setPracticeSessionPhotos((current) => {
+      const removed = current.find((photo) => photo.id === photoId);
+      if (removed) URL.revokeObjectURL(removed.preview);
+      return current.filter((photo) => photo.id !== photoId);
+    });
+  }
+
+  async function savePracticeSession(status) {
+    if (!session?.user || !selectedPractice) return;
+    setPracticeSessionSaving(true);
+    setPracticeSessionError('');
+
+    const photoPaths = [];
+    for (const photo of practiceSessionPhotos) {
+      const safeName = photo.file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+      const path = `${session.user.id}/${crypto.randomUUID()}-${safeName}`;
+      const { error: uploadError } = await supabase.storage
+        .from('practice-diary')
+        .upload(path, photo.file, { upsert: false, contentType: photo.file.type });
+      if (uploadError) {
+        setPracticeSessionError(uploadError.message);
+        setPracticeSessionSaving(false);
+        return;
+      }
+      photoPaths.push(path);
+    }
+
+    const payload = {
+      user_id: session.user.id,
+      practice_id: selectedPractice.id,
+      practice_title: selectedPractice.title,
+      notes: practiceSessionNotes.trim() || null,
+      photo_paths: photoPaths,
+      status,
+      duration_minutes: selectedPractice.duration_minutes,
+      completed_at: status === 'completed' ? new Date().toISOString() : null
+    };
+
+    const { data, error } = await supabase
+      .from('practice_diary_entries')
+      .insert(payload)
+      .select('id, practice_id, practice_title, notes, photo_paths, status, duration_minutes, started_at, completed_at, created_at')
+      .single();
+
+    if (error) {
+      setPracticeSessionError(error.message);
+      setPracticeSessionSaving(false);
+      return;
+    }
+
+    setDiaryEntries((current) => [data, ...current]);
+    closePracticeSession();
+    setActiveTab('Diary');
+    setPracticeSessionSaving(false);
+  }
+
   async function installApp() {
     if (!installPrompt) return;
     await installPrompt.prompt();
@@ -537,7 +675,7 @@ function App() {
         <section className="app-page">
           <header className="page-heading"><p className="eyebrow">PRACTICE LIBRARY</p><h2>Ways to practice attention and meaning</h2><p>Choose something that fits the time and energy you have today.</p></header>
           {practicesLoading ? <p className="page-status">Loading practices…</p> : pageError ? <p className="intention-alert">{pageError}</p> : (
-            <div className="practice-library-grid">{practices.map((item) => <article className="library-card" key={item.id}><div className="library-icon"><Sprout size={28} /></div><div><span className="category-chip">{item.category}</span><h3>{item.title}</h3><p>{item.description}</p><div className="library-meta"><span><Timer size={17} /> {item.duration_minutes} min</span>{item.benefit && <span><Leaf size={17} /> {item.benefit}</span>}</div><details><summary>How to practice</summary><p>{item.instructions}</p></details></div></article>)}</div>
+            <div className="practice-library-grid">{practices.map((item) => <article className="library-card" key={item.id}><div className="library-icon"><Sprout size={28} /></div><div><span className="category-chip">{item.category}</span><h3>{item.title}</h3><p>{item.description}</p><div className="library-meta"><span><Timer size={17} /> {item.duration_minutes} min</span>{item.benefit && <span><Leaf size={17} /> {item.benefit}</span>}</div><button className="library-start-button" type="button" onClick={() => startPracticeSession(item)}><Sparkles size={17} /> Start practice</button><details><summary>How to practice</summary><p>{item.instructions}</p></details></div></article>)}</div>
           )}
         </section>
       )}
@@ -565,6 +703,13 @@ function App() {
         </section>
       )}
 
+      {activeTab === 'Diary' && (
+        <section className="app-page diary-page">
+          <header className="page-heading"><p className="eyebrow">PRACTICE DIARY</p><h2>Your record of attention</h2><p>Notes and photographs from the practices you have begun.</p></header>
+          {!session ? <div className="page-empty card"><BookHeart size={38}/><h3>Sign in to keep a practice diary</h3><button className="save-button" onClick={() => openAuthModal('signin')}>Sign in</button></div> : diaryLoading ? <p className="page-status">Loading diary…</p> : pageError ? <p className="intention-alert">{pageError}</p> : diaryEntries.length === 0 ? <div className="page-empty card"><BookHeart size={38}/><h3>Your diary is ready</h3><p>Start a practice and save notes or photos to create your first entry.</p><button className="save-button" onClick={() => setActiveTab('Practice')}>Browse practices</button></div> : <div className="diary-grid">{diaryEntries.map((entry) => <article className="diary-card card" key={entry.id}><div className="diary-card-heading"><div><span className={`diary-status ${entry.status}`}>{entry.status === 'completed' ? 'Completed' : 'Saved for later'}</span><h3>{entry.practice_title}</h3></div><small>{new Date(entry.created_at).toLocaleString()}</small></div>{entry.notes && <p className="diary-notes">{entry.notes}</p>}{entry.photo_paths?.length > 0 && <div className="diary-photo-grid">{entry.photo_paths.map((path) => diaryPhotoUrls[path] ? <img src={diaryPhotoUrls[path]} alt={`Practice note for ${entry.practice_title}`} key={path} /> : <div className="diary-photo-placeholder" key={path}><Image size={22}/></div>)}</div>}<div className="diary-meta"><Timer size={16}/><span>{entry.duration_minutes || '—'} min</span></div></article>)}</div>}
+        </section>
+      )}
+
       {activeTab === 'Me' && (
         <section className="app-page profile-page">
           <header className="page-heading"><p className="eyebrow">YOUR PROFILE</p><h2>{session ? userName : 'Your journey'}</h2><p>Manage your saved intentions and account.</p></header>
@@ -575,6 +720,20 @@ function App() {
           </>}
         </section>
       )}
+      {selectedPractice && (
+        <div className="modal-backdrop" role="presentation" onMouseDown={closePracticeSession}>
+          <section className="practice-session-modal" role="dialog" aria-modal="true" aria-labelledby="practice-session-title" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="modal-heading"><div><p className="eyebrow">PRACTICE SESSION</p><h2 id="practice-session-title">{selectedPractice.title}</h2><p>{selectedPractice.instructions}</p></div><button className="modal-close" type="button" aria-label="Close" onClick={closePracticeSession}><X size={23}/></button></div>
+            <div className="session-meta"><span><Timer size={18}/> {selectedPractice.duration_minutes} min</span>{selectedPractice.benefit && <span><Leaf size={18}/> {selectedPractice.benefit}</span>}</div>
+            <label className="session-notes">Notes<textarea value={practiceSessionNotes} onChange={(event) => setPracticeSessionNotes(event.target.value)} placeholder="What did you notice? What changed while you practiced?" rows={6}/></label>
+            <div className="session-photos-heading"><div><strong>Photos</strong><small>Add up to six images from the practice.</small></div><label className="photo-upload-button"><Camera size={18}/> Add photos<input type="file" accept="image/*" multiple onChange={addPracticePhotos}/></label></div>
+            {practiceSessionPhotos.length > 0 && <div className="session-photo-grid">{practiceSessionPhotos.map((photo) => <figure key={photo.id}><img src={photo.preview} alt="Practice preview"/><button type="button" aria-label="Remove photo" onClick={() => removePracticePhoto(photo.id)}><X size={16}/></button></figure>)}</div>}
+            {practiceSessionError && <p className="intention-alert" role="alert">{practiceSessionError}</p>}
+            <div className="practice-session-actions"><button className="secondary-button" type="button" disabled={practiceSessionSaving} onClick={() => savePracticeSession('draft')}><Save size={17}/> Save for later</button><button className="save-button" type="button" disabled={practiceSessionSaving} onClick={() => savePracticeSession('completed')}><CheckCircle2 size={17}/> {practiceSessionSaving ? 'Saving…' : 'Complete practice'}</button></div>
+          </section>
+        </div>
+      )}
+
       {isIntentionModalOpen && (
         <div className="modal-backdrop" role="presentation" onMouseDown={closeIntentionModal}>
           <section className="intention-modal" role="dialog" aria-modal="true" aria-labelledby="intention-modal-title" onMouseDown={(event) => event.stopPropagation()}>
@@ -776,7 +935,7 @@ function App() {
       <nav className="bottom-nav" aria-label="Primary navigation">
         {[
           ['Today', Home], ['Practice', Sprout], ['Commonplace', BookOpen],
-          ['Wonder', Sparkles], ['Me', CircleUserRound]
+          ['Wonder', Sparkles], ['Diary', BookHeart], ['Me', CircleUserRound]
         ].map(([label, Icon]) => (
           <button key={label} className={activeTab === label ? 'active' : ''} onClick={() => label === 'Me' && !session ? openAuthModal('signin') : setActiveTab(label)}>
             <Icon size={28} strokeWidth={1.7} />

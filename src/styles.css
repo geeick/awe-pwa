@@ -1167,3 +1167,229 @@ button { font: inherit; }
   .profile-card .secondary-button { margin-left:0; width:100%; justify-content:center; }
   .profile-stats { grid-template-columns:1fr; }
 }
+
+/* Practice sessions and diary */
+.library-start-button {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 17px 0 12px;
+  border: 0;
+  border-radius: 11px;
+  padding: 12px 14px;
+  background: linear-gradient(90deg, #315d45, #416e54);
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.library-start-button:hover { filter: brightness(.98); }
+
+.practice-session-modal {
+  width: min(720px, 100%);
+  max-height: min(860px, calc(100vh - 40px));
+  overflow-y: auto;
+  border: 1px solid rgba(49, 93, 69, .12);
+  border-radius: 26px;
+  padding: 28px;
+  background: #f9f5ee;
+  box-shadow: 0 28px 80px rgba(20, 35, 29, .32);
+}
+
+.session-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 22px 0;
+  color: #526159;
+  font-size: 14px;
+}
+
+.session-meta span,
+.diary-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.session-notes {
+  display: grid;
+  gap: 8px;
+  color: #30453b;
+  font-weight: 700;
+}
+
+.session-notes textarea {
+  width: 100%;
+  min-height: 150px;
+  resize: vertical;
+  border: 1px solid #bdc5bd;
+  border-radius: 14px;
+  padding: 14px 16px;
+  background: white;
+  color: #1f342b;
+  line-height: 1.55;
+  outline: none;
+}
+
+.session-notes textarea:focus {
+  border-color: #356c50;
+  box-shadow: 0 0 0 3px rgba(53, 108, 80, .13);
+}
+
+.session-photos-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 22px;
+}
+
+.session-photos-heading > div { display: grid; gap: 3px; }
+.session-photos-heading small { color: #66746d; }
+
+.photo-upload-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #c5cbc4;
+  border-radius: 11px;
+  padding: 10px 13px;
+  background: #fff;
+  color: var(--green-dark);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.photo-upload-button input { display: none; }
+
+.session-photo-grid,
+.diary-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.session-photo-grid figure {
+  position: relative;
+  aspect-ratio: 1;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 13px;
+  background: #e6e6df;
+}
+
+.session-photo-grid img,
+.diary-photo-grid img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.session-photo-grid figure > button {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(28, 42, 35, .82);
+  color: white;
+  cursor: pointer;
+}
+
+.practice-session-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.practice-session-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.diary-grid {
+  display: grid;
+  gap: 18px;
+}
+
+.diary-card { padding: 24px; }
+
+.diary-card-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.diary-card-heading h3 {
+  margin: 8px 0 0;
+  font: 700 23px/1.25 'Libre Baskerville', serif;
+}
+
+.diary-card-heading small { color: #6d7872; text-align: right; }
+
+.diary-status {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: #ece8df;
+  color: #59665f;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.diary-status.completed { background: #dfeade; color: #2f6546; }
+.diary-notes { margin: 18px 0 0; line-height: 1.65; white-space: pre-wrap; }
+
+.diary-photo-grid img,
+.diary-photo-placeholder {
+  aspect-ratio: 4 / 3;
+  border-radius: 12px;
+}
+
+.diary-photo-placeholder {
+  display: grid;
+  place-items: center;
+  background: #e4e5de;
+  color: #6f7c75;
+}
+
+.diary-meta {
+  margin-top: 16px;
+  color: #637068;
+  font-size: 13px;
+}
+
+@media (min-width: 900px) {
+  .diary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 600px) {
+  .practice-session-modal {
+    width: 100%;
+    max-height: 92vh;
+    border-radius: 24px 24px 0 0;
+    padding: 23px 18px calc(20px + env(safe-area-inset-bottom));
+  }
+
+  .session-photos-heading { align-items: flex-end; }
+  .session-photo-grid,
+  .diary-photo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .practice-session-actions { display: grid; grid-template-columns: 1fr; }
+  .practice-session-actions button { width: 100%; }
+  .diary-card-heading { display: grid; }
+  .diary-card-heading small { text-align: left; }
+}
