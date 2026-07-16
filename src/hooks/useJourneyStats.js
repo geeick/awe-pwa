@@ -8,11 +8,17 @@ const EMPTY_STATS = {
 };
 
 function dateKey(value) {
-  return new Date(value).toISOString().slice(0, 10);
+  const date = value instanceof Date ? new Date(value) : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function calculateStreak(completedDates) {
-  const uniqueDates = new Set(completedDates);
+  const uniqueDates = new Set(completedDates.map(dateKey).filter(Boolean));
   const cursor = new Date();
   cursor.setHours(0, 0, 0, 0);
 
@@ -37,7 +43,9 @@ function calculateMeaningScore({ completedEntries, checkIns, intentions }) {
   cutoff.setDate(cutoff.getDate() - 13);
 
   const recentEntries = completedEntries.filter((entry) => new Date(entry.completed_at || entry.created_at) >= cutoff);
-  const completedDays = new Set(recentEntries.map((entry) => dateKey(entry.completed_at || entry.created_at))).size;
+  const completedDays = new Set(
+    recentEntries.map((entry) => dateKey(entry.completed_at || entry.created_at)).filter(Boolean)
+  ).size;
   const consistencyScore = Math.min(completedDays / 14, 1) * 35;
 
   const recentCheckIns = checkIns.filter((entry) => new Date(`${entry.check_in_date}T00:00:00`) >= cutoff);
