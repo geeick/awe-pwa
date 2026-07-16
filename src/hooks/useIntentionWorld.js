@@ -60,23 +60,7 @@ export default function useIntentionWorld({ intention, userId }) {
         return;
       }
 
-      let worldItems = exactResult.data || [];
-      if (worldItems.length === 0) {
-        const fallbackResult = await supabase
-          .from('intention_world_items')
-          .select(ITEM_SELECT)
-          .eq('is_approved', true)
-          .eq('intention_text', '__general__')
-          .limit(100);
-
-        if (!active) return;
-        if (fallbackResult.error) {
-          setError(fallbackResult.error.message);
-          setLoading(false);
-          return;
-        }
-        worldItems = fallbackResult.data || [];
-      }
+      const worldItems = exactResult.data || [];
 
       let votedIds = new Set();
       if (userId && worldItems.length) {

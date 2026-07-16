@@ -14,12 +14,25 @@ import useJourneyStats from './hooks/useJourneyStats';
 import useIntentionWorld from './hooks/useIntentionWorld';
 import './styles.css';
 
+function localDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function automaticIntentionForDate(dateKey) {
+  const numericDate = Number(dateKey.replaceAll('-', ''));
+  return intentionSuggestions[numericDate % intentionSuggestions.length];
+}
+
 function App() {
   const [selectedMood, setSelectedMood] = useState(() => localStorage.getItem('groundedMood') || '');
   const [reflectionDraft, setReflectionDraft] = useState('');
   const [reflectionSaving, setReflectionSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('Today');
-  const [intention, setIntention] = useState(() => localStorage.getItem('groundedIntention') || 'I will pay attention to beauty.');
+  const [intention, setIntention] = useState(() => automaticIntentionForDate(localDateKey()));
+  const [dailyIntentionLoading, setDailyIntentionLoading] = useState(true);
   const [intentionDraft, setIntentionDraft] = useState(intention);
   const [isIntentionModalOpen, setIsIntentionModalOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
@@ -93,6 +106,74 @@ function App() {
       listener.subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    const today = localDateKey();
+
+    async function loadDailyIntention() {
+      setDailyIntentionLoading(true);
+
+      if (!session?.user) {
+        const automatic = automaticIntentionForDate(today);
+        if (active) {
+          setIntention(automatic);
+          setIntentionDraft(automatic);
+          setDailyIntentionLoading(false);
+        }
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('daily_intentions')
+        .select('intention_text')
+        .eq('user_id', session.user.id)
+        .eq('intention_date', today)
+        .maybeSingle();
+
+      if (!active) return;
+
+      if (error) {
+        setPageError(error.message);
+        setDailyIntentionLoading(false);
+        return;
+      }
+
+      if (data?.intention_text) {
+        setIntention(data.intention_text);
+        setIntentionDraft(data.intention_text);
+        setDailyIntentionLoading(false);
+        return;
+      }
+
+      const automatic = automaticIntentionForDate(today);
+      const { error: insertError } = await supabase
+        .from('daily_intentions')
+        .upsert(
+          {
+            user_id: session.user.id,
+            intention_date: today,
+            intention_text: automatic
+          },
+          { onConflict: 'user_id,intention_date' }
+        );
+
+      if (!active) return;
+
+      if (insertError) {
+        setPageError(insertError.message);
+      } else {
+        setIntention(automatic);
+        setIntentionDraft(automatic);
+        refreshJourneyStats();
+      }
+
+      setDailyIntentionLoading(false);
+    }
+
+    loadDailyIntention();
+    return () => { active = false; };
+  }, [session?.user?.id]);
 
   useEffect(() => {
     if (!session?.user) {
@@ -241,13 +322,6 @@ function App() {
 
   const userName = session?.user?.user_metadata?.display_name || session?.user?.email?.split('@')[0] || 'there';
 
-  function localDateKey(date = new Date()) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
-
   async function saveReflection(event) {
     event.preventDefault();
     if (!session?.user || !reflectionDraft.trim()) {
@@ -368,7 +442,6 @@ function App() {
     }
 
     setIntention(next);
-    localStorage.setItem('groundedIntention', next);
     setShareCustomIntention(false);
     setIsIntentionModalOpen(false);
     refreshJourneyStats();
@@ -661,6 +734,7 @@ function App() {
       {activeTab === 'Today' && (
         <TodayPage
           intention={intention}
+          dailyIntentionLoading={dailyIntentionLoading}
           selectedMood={selectedMood}
           pageError={pageError}
           journeyStats={journeyStats}

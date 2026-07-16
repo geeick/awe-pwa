@@ -47,6 +47,7 @@ function WorldItem({ item, onVote }) {
 
 export default function TodayPage({
   intention,
+  dailyIntentionLoading,
   selectedMood,
   pageError,
   journeyStats,
@@ -135,7 +136,7 @@ export default function TodayPage({
               <Pencil size={21} strokeWidth={1.7} />
             </button>
           </div>
-          <blockquote>“{intention}”</blockquote>
+          <blockquote>{dailyIntentionLoading ? 'Choosing today’s intention…' : `“${intention}”`}</blockquote>
           <p className="intention-world-intro">For today, let everything on this page grow from this one idea.</p>
         </div>
         <div className="botanical"><Leaf size={92} strokeWidth={1.1} /></div>

@@ -1912,3 +1912,61 @@ button { font: inherit; }
   }
 }
 
+/* Balanced intention-world homepage */
+@media (min-width: 1120px) {
+  .intention-world-home {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 22px;
+  }
+
+  .intention-world-home .intention-world-hero {
+    grid-column: 1 / -1;
+  }
+
+  .intention-world-home .companion-card,
+  .intention-world-home .intention-practice-card {
+    grid-column: span 6;
+  }
+
+  .intention-world-home .community-inspiration-card,
+  .intention-world-home .community-reflections-card {
+    grid-column: 1 / -1;
+  }
+
+  .intention-world-home .intention-reflection-card {
+    grid-column: span 7;
+  }
+
+  .intention-world-home .journey-card {
+    grid-column: span 5;
+    align-self: stretch;
+  }
+
+  .intention-world-home .companion-card,
+  .intention-world-home .intention-practice-card,
+  .intention-world-home .intention-reflection-card,
+  .intention-world-home .journey-card {
+    min-width: 0;
+  }
+
+  .intention-world-home .companion-card > .world-item {
+    min-height: 250px;
+  }
+
+  .intention-world-home .world-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1500px) {
+  .intention-world-home .world-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1119px) {
+  .intention-world-home > * {
+    grid-column: 1 !important;
+  }
+}
+
