@@ -292,9 +292,9 @@ button { font: inherit; }
 
   .practice-card {
     grid-column: span 5;
-    grid-row: span 2;
-    min-height: 432px;
-    padding: 30px;
+    grid-row: auto;
+    min-height: 0;
+    padding: 26px 30px 28px;
   }
 
   .practice-row {
@@ -308,7 +308,7 @@ button { font: inherit; }
   }
 
   .primary-button {
-    margin-top: 36px;
+    margin-top: 24px;
   }
 
   .reflection-card,
