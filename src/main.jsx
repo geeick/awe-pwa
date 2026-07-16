@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   Bell, BookOpen, ChevronRight, CircleUserRound, Flame, Home, Leaf,
-  LogIn, LogOut, Menu, Mountain, Pencil, Quote, Sparkles, Sprout, Sun,
-  Timer, TreePine, UsersRound, X
+  LogIn, LogOut, Menu, Mountain, Pencil, Quote, Sparkles, Sprout, Star, Sun,
+  Timer, Trash2, TreePine, UsersRound, X
 } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import './styles.css';
@@ -41,6 +41,10 @@ function App() {
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [authMessage, setAuthMessage] = useState('');
   const [authError, setAuthError] = useState('');
+  const [intentionFilter, setIntentionFilter] = useState('recommended');
+  const [starredIntentions, setStarredIntentions] = useState([]);
+  const [starredLoading, setStarredLoading] = useState(false);
+  const [intentionError, setIntentionError] = useState('');
 
   useEffect(() => {
     const handler = (event) => {
@@ -74,6 +78,31 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (!session?.user) {
+      setStarredIntentions([]);
+      return;
+    }
+
+    let active = true;
+    setStarredLoading(true);
+
+    supabase
+      .from('starred_intentions')
+      .select('id, text, created_at')
+      .order('created_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) setIntentionError(error.message);
+        else setStarredIntentions(data || []);
+        setStarredLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [session?.user?.id]);
+
+  useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
     if (import.meta.env.PROD) {
@@ -98,10 +127,46 @@ function App() {
     localStorage.setItem('groundedMood', label);
   }
 
-  function saveIntention(event) {
+  async function saveIntention(event) {
     event.preventDefault();
     const next = intentionDraft.trim();
     if (!next) return;
+
+    const isRecommended = intentionSuggestions.includes(next);
+
+    if (!isRecommended) {
+      if (!session?.user) {
+        setIntentionError('Sign in to save custom intentions to your starred list.');
+        openAuthModal('signin');
+        return;
+      }
+
+      setStarredLoading(true);
+      setIntentionError('');
+
+      const existing = starredIntentions.find(
+        (item) => item.text.toLocaleLowerCase() === next.toLocaleLowerCase()
+      );
+
+      if (!existing) {
+        const { data, error } = await supabase
+          .from('starred_intentions')
+          .insert({ user_id: session.user.id, text: next })
+          .select('id, text, created_at')
+          .single();
+
+        if (error) {
+          setIntentionError(error.message);
+          setStarredLoading(false);
+          return;
+        }
+
+        setStarredIntentions((current) => [data, ...current]);
+      }
+
+      setStarredLoading(false);
+    }
+
     setIntention(next);
     localStorage.setItem('groundedIntention', next);
     setIsIntentionModalOpen(false);
@@ -109,11 +174,31 @@ function App() {
 
   function closeIntentionModal() {
     setIntentionDraft(intention);
+    setIntentionError('');
     setIsIntentionModalOpen(false);
   }
 
   function chooseSuggestedIntention(suggestion) {
     setIntentionDraft(suggestion);
+    setIntentionError('');
+  }
+
+  async function removeStarredIntention(event, item) {
+    event.stopPropagation();
+    setIntentionError('');
+
+    const { error } = await supabase
+      .from('starred_intentions')
+      .delete()
+      .eq('id', item.id);
+
+    if (error) {
+      setIntentionError(error.message);
+      return;
+    }
+
+    setStarredIntentions((current) => current.filter((saved) => saved.id !== item.id));
+    if (intentionDraft === item.text) setIntentionDraft('');
   }
 
   function togglePractice() {
@@ -249,6 +334,8 @@ function App() {
                 aria-label="Choose today’s intention"
                 onClick={() => {
                   setIntentionDraft(intention);
+                  setIntentionFilter('recommended');
+                  setIntentionError('');
                   setIsIntentionModalOpen(true);
                 }}
               >
@@ -345,16 +432,71 @@ function App() {
               </div>
               <button className="modal-close" type="button" aria-label="Close" onClick={closeIntentionModal}><X size={23} /></button>
             </div>
-            <div className="suggestion-grid" aria-label="Recommended intentions">
-              {intentionSuggestions.map((suggestion) => (
-                <button type="button" key={suggestion} className={`suggestion-card ${intentionDraft === suggestion ? 'selected' : ''}`} onClick={() => chooseSuggestedIntention(suggestion)}>
-                  “{suggestion}”
-                </button>
-              ))}
+            <div className="intention-filter" role="tablist" aria-label="Intention collection">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={intentionFilter === 'recommended'}
+                className={intentionFilter === 'recommended' ? 'active' : ''}
+                onClick={() => setIntentionFilter('recommended')}
+              >
+                Recommended
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={intentionFilter === 'starred'}
+                className={intentionFilter === 'starred' ? 'active' : ''}
+                onClick={() => setIntentionFilter('starred')}
+              >
+                <Star size={16} fill="currentColor" />
+                Starred {session ? `(${starredIntentions.length})` : ''}
+              </button>
             </div>
+
+            {intentionFilter === 'recommended' ? (
+              <div className="suggestion-grid" aria-label="Recommended intentions">
+                {intentionSuggestions.map((suggestion) => (
+                  <button type="button" key={suggestion} className={`suggestion-card ${intentionDraft === suggestion ? 'selected' : ''}`} onClick={() => chooseSuggestedIntention(suggestion)}>
+                    “{suggestion}”
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="starred-intention-list" aria-label="Starred intentions">
+                {!session ? (
+                  <div className="starred-empty">
+                    <Star size={28} />
+                    <p>Sign in to save and reuse your own intentions.</p>
+                    <button type="button" className="secondary-button" onClick={() => openAuthModal('signin')}>Sign in</button>
+                  </div>
+                ) : starredLoading ? (
+                  <p className="starred-status">Loading your intentions…</p>
+                ) : starredIntentions.length === 0 ? (
+                  <div className="starred-empty">
+                    <Star size={28} />
+                    <p>Your custom intentions will appear here after you use them.</p>
+                  </div>
+                ) : (
+                  starredIntentions.map((item) => (
+                    <div className={`starred-intention-row ${intentionDraft === item.text ? 'selected' : ''}`} key={item.id}>
+                      <button type="button" className="starred-intention-select" onClick={() => chooseSuggestedIntention(item.text)}>
+                        <Star size={16} fill="currentColor" />
+                        <span>“{item.text}”</span>
+                      </button>
+                      <button type="button" className="starred-delete" aria-label={`Remove ${item.text}`} onClick={(event) => removeStarredIntention(event, item)}>
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
             <form className="modal-custom-form" onSubmit={saveIntention}>
               <label htmlFor="custom-intention">Write your own</label>
-              <textarea id="custom-intention" value={intentionDraft} onChange={(event) => setIntentionDraft(event.target.value)} maxLength={140} rows={3} placeholder="Today, I will…" autoFocus />
+              <textarea id="custom-intention" value={intentionDraft} onChange={(event) => { setIntentionDraft(event.target.value); setIntentionError(''); }} maxLength={140} rows={3} placeholder="Today, I will…" autoFocus />
+              {intentionError && <p className="intention-alert" role="alert">{intentionError}</p>}
               <div className="modal-footer">
                 <span>{intentionDraft.length}/140</span>
                 <div className="intention-actions">

@@ -720,3 +720,134 @@ button { font: inherit; }
     padding: 23px 18px calc(20px + env(safe-area-inset-bottom));
   }
 }
+
+
+/* Starred intentions */
+.intention-filter {
+  display: inline-flex;
+  gap: 6px;
+  margin-top: 22px;
+  padding: 5px;
+  border-radius: 14px;
+  background: #ebe7df;
+}
+
+.intention-filter button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  background: transparent;
+  color: #526159;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.intention-filter button.active {
+  background: white;
+  color: var(--green-dark);
+  box-shadow: 0 3px 12px rgba(38, 51, 46, .09);
+}
+
+.starred-intention-list {
+  display: grid;
+  gap: 10px;
+  min-height: 112px;
+  margin-top: 16px;
+}
+
+.starred-intention-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  align-items: stretch;
+  border: 1px solid #d9d8cf;
+  border-radius: 15px;
+  background: rgba(255, 255, 255, .64);
+  overflow: hidden;
+}
+
+.starred-intention-row.selected {
+  border-color: #356c50;
+  background: #e3eadf;
+  box-shadow: 0 0 0 2px rgba(53, 108, 80, .1);
+}
+
+.starred-intention-select {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: 0;
+  padding: 15px 17px;
+  background: transparent;
+  color: #263f34;
+  text-align: left;
+  font: 400 15px/1.48 'Libre Baskerville', serif;
+  cursor: pointer;
+}
+
+.starred-intention-select svg {
+  flex: 0 0 auto;
+  margin-top: 3px;
+  color: #b27a2d;
+}
+
+.starred-delete {
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-left: 1px solid #ddd9d0;
+  background: transparent;
+  color: #7d4b47;
+  cursor: pointer;
+}
+
+.starred-delete:hover {
+  background: #f4dfdc;
+}
+
+.starred-empty {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 26px 18px;
+  border: 1px dashed #c8ccc4;
+  border-radius: 15px;
+  color: #617068;
+  text-align: center;
+}
+
+.starred-empty p,
+.starred-status {
+  margin: 0;
+}
+
+.starred-status {
+  padding: 24px 0;
+  color: #617068;
+  text-align: center;
+}
+
+.intention-alert {
+  margin: 10px 0 0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #f7dfdc;
+  color: #762f2a;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+@media (max-width: 600px) {
+  .intention-filter {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+
+  .intention-filter button {
+    justify-content: center;
+    padding-inline: 9px;
+  }
+}
