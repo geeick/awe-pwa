@@ -1050,3 +1050,49 @@ button { font: inherit; }
     border-top: 1px solid #ddd9d0;
   }
 }
+
+
+/* Explore tab inside the intention chooser */
+.modal-community-list {
+  display: grid;
+  gap: 10px;
+  min-height: 112px;
+  margin-top: 16px;
+}
+
+.modal-community-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  border: 1px solid #d9d8cf;
+  border-radius: 15px;
+  background: rgba(255,255,255,.64);
+  overflow: hidden;
+}
+
+.modal-community-row.selected {
+  border-color: #356c50;
+  background: #e3eadf;
+  box-shadow: 0 0 0 2px rgba(53,108,80,.1);
+}
+
+.community-intention-select {
+  border: 0;
+  padding: 15px 17px;
+  background: transparent;
+  color: #263f34;
+  text-align: left;
+  font: 400 15px/1.48 'Libre Baskerville', serif;
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .intention-filter {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .intention-filter button {
+    gap: 5px;
+    padding-inline: 7px;
+    font-size: 12px;
+  }
+}

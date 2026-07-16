@@ -107,7 +107,8 @@ function App() {
   }, [session?.user?.id]);
 
   useEffect(() => {
-    if (activeTab !== 'Explore' || !session?.user) return;
+    const exploreVisible = activeTab === 'Explore' || (isIntentionModalOpen && intentionFilter === 'explore');
+    if (!exploreVisible || !session?.user) return;
     let active = true;
     setCommunityLoading(true);
     setCommunityError('');
@@ -124,7 +125,7 @@ function App() {
         setCommunityLoading(false);
       });
     return () => { active = false; };
-  }, [activeTab, session?.user?.id]);
+  }, [activeTab, intentionFilter, isIntentionModalOpen, session?.user?.id]);
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
@@ -553,6 +554,16 @@ function App() {
                 <Star size={16} fill="currentColor" />
                 Starred {session ? `(${starredIntentions.length})` : ''}
               </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={intentionFilter === 'explore'}
+                className={intentionFilter === 'explore' ? 'active' : ''}
+                onClick={() => setIntentionFilter('explore')}
+              >
+                <Globe2 size={16} />
+                Explore
+              </button>
             </div>
 
             {intentionFilter === 'recommended' ? (
@@ -573,7 +584,7 @@ function App() {
                   </div>
                 ))}
               </div>
-            ) : (
+            ) : intentionFilter === 'starred' ? (
               <div className="starred-intention-list" aria-label="Starred intentions">
                 {!session ? (
                   <div className="starred-empty">
@@ -604,6 +615,41 @@ function App() {
                       </button>
                       <button type="button" className="starred-delete" aria-label={`Remove ${item.text}`} onClick={(event) => removeStarredIntention(event, item)}>
                         <Trash2 size={18} />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            ) : (
+              <div className="modal-community-list" aria-label="Community intentions">
+                {!session ? (
+                  <div className="starred-empty">
+                    <Globe2 size={28} />
+                    <p>Sign in to explore intentions shared by the community.</p>
+                    <button type="button" className="secondary-button" onClick={() => openAuthModal('signin')}>Sign in</button>
+                  </div>
+                ) : communityLoading ? (
+                  <p className="starred-status">Loading community intentions…</p>
+                ) : communityError ? (
+                  <p className="intention-alert" role="alert">{communityError}</p>
+                ) : communityIntentions.length === 0 ? (
+                  <div className="starred-empty">
+                    <Globe2 size={28} />
+                    <p>No public intentions have been shared yet.</p>
+                  </div>
+                ) : (
+                  communityIntentions.map((item) => (
+                    <div className={`modal-community-row ${intentionDraft === item.text ? 'selected' : ''}`} key={item.id}>
+                      <button type="button" className="community-intention-select" onClick={() => chooseSuggestedIntention(item.text)}>
+                        “{item.text}”
+                      </button>
+                      <button
+                        type="button"
+                        className={`star-action ${isTextStarred(item.text) ? 'active' : ''}`}
+                        aria-label={isTextStarred(item.text) ? 'Unstar intention' : 'Star intention'}
+                        onClick={(event) => starIntentionText(event, item.text)}
+                      >
+                        <Star size={18} fill={isTextStarred(item.text) ? 'currentColor' : 'none'} />
                       </button>
                     </div>
                   ))
