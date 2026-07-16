@@ -11,6 +11,7 @@ import PracticePage from './pages/PracticePage';
 import DiaryPage from './pages/DiaryPage';
 import ProfilePage from './pages/ProfilePage';
 import useJourneyStats from './hooks/useJourneyStats';
+import useIntentionWorld from './hooks/useIntentionWorld';
 import './styles.css';
 
 function App() {
@@ -53,6 +54,14 @@ function App() {
   const [diaryCheckIns, setDiaryCheckIns] = useState([]);
 
   const { stats: journeyStats, loading: journeyLoading, refresh: refreshJourneyStats } = useJourneyStats(session?.user?.id);
+  const {
+    items: intentionWorldItems,
+    loading: intentionWorldLoading,
+    error: intentionWorldError,
+    vote: voteForIntentionItem,
+    contribute: contributeToIntention,
+    refresh: refreshIntentionWorld
+  } = useIntentionWorld({ intention, userId: session?.user?.id });
 
   useEffect(() => {
     const handler = (event) => {
@@ -132,7 +141,7 @@ function App() {
   }, [intentionFilter, isIntentionModalOpen, session?.user?.id]);
 
   useEffect(() => {
-    if (activeTab !== 'Practice') return;
+    if (!['Today', 'Practice'].includes(activeTab)) return;
     let active = true;
     setPracticesLoading(true);
     setPageError('');
@@ -363,6 +372,7 @@ function App() {
     setShareCustomIntention(false);
     setIsIntentionModalOpen(false);
     refreshJourneyStats();
+    refreshIntentionWorld();
   }
 
   function closeIntentionModal() {
@@ -442,9 +452,14 @@ function App() {
   }
 
 
-  async function startTodaysPractice() {
+  async function startTodaysPractice(preferredPractice = null) {
     if (!session?.user) {
       openAuthModal('signin');
+      return;
+    }
+
+    if (preferredPractice) {
+      startPracticeSession(preferredPractice);
       return;
     }
 
@@ -650,6 +665,12 @@ function App() {
           pageError={pageError}
           journeyStats={journeyStats}
           journeyLoading={journeyLoading}
+          practices={practices}
+          intentionWorldItems={intentionWorldItems}
+          intentionWorldLoading={intentionWorldLoading}
+          intentionWorldError={intentionWorldError}
+          onVoteIntentionItem={voteForIntentionItem}
+          onContributeToIntention={contributeToIntention}
           reflectionDraft={reflectionDraft}
           reflectionSaving={reflectionSaving}
           onReflectionChange={setReflectionDraft}

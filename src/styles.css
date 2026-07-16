@@ -1659,3 +1659,256 @@ button { font: inherit; }
   }
 }
 
+/* Intention-centered homepage */
+.intention-world-home {
+  align-items: stretch;
+}
+
+.intention-world-hero {
+  min-height: 245px;
+}
+
+.today-date {
+  display: block;
+  margin-top: 5px;
+  color: #7a857e;
+  font-size: 13px;
+}
+
+.intention-world-intro {
+  max-width: 580px;
+  margin: 16px 0 0;
+  color: #5c6861;
+  line-height: 1.55;
+}
+
+.companion-card,
+.community-inspiration-card,
+.community-reflections-card {
+  padding: 28px;
+}
+
+.world-section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+.world-section-heading h2 {
+  margin: 0;
+  color: #20382e;
+  font: 700 25px/1.25 'Libre Baskerville', serif;
+}
+
+.world-section-heading .eyebrow {
+  margin-bottom: 8px;
+}
+
+.contribute-button {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: #315d45;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.world-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.world-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 175px;
+  border: 1px solid #dedbd2;
+  border-radius: 17px;
+  padding: 18px;
+  background: rgba(255,255,255,.62);
+}
+
+.companion-card > .world-item {
+  min-height: 220px;
+  justify-content: center;
+  border: 0;
+  background: linear-gradient(145deg,#1d4744,#173332 70%,#253b3a);
+  color: white;
+}
+
+.world-item-type {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 13px;
+  color: #547061;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.companion-card .world-item-type {
+  color: rgba(255,255,255,.68);
+}
+
+.world-item h3 {
+  margin: 0 0 10px;
+  font: 700 19px/1.3 'Libre Baskerville', serif;
+}
+
+.world-item blockquote,
+.world-item > p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.world-item blockquote {
+  font: 19px/1.58 'Libre Baskerville', serif;
+}
+
+.world-item-creator {
+  margin-top: 11px;
+  opacity: .72;
+  font-size: 13px;
+}
+
+.world-item a {
+  margin-top: 10px;
+  color: inherit;
+  font-size: 13px;
+}
+
+.world-love {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 999px;
+  margin-top: auto;
+  padding: 8px 10px;
+  background: rgba(49,93,69,.09);
+  color: #45604f;
+  cursor: pointer;
+}
+
+.companion-card .world-love {
+  background: rgba(255,255,255,.12);
+  color: white;
+}
+
+.world-love.loved {
+  color: #a5454b;
+}
+
+.world-empty {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  padding: 20px;
+  border: 1px dashed #c9cec7;
+  border-radius: 15px;
+}
+
+.intention-practice-card,
+.intention-reflection-card {
+  grid-column: auto;
+}
+
+.community-reflection-list {
+  display: grid;
+  gap: 12px;
+}
+
+.community-reflection-list .world-item {
+  min-height: 0;
+}
+
+.contribution-modal {
+  width: min(620px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  display: grid;
+  gap: 15px;
+  border-radius: 26px;
+  padding: 28px;
+  background: #f9f5ee;
+  box-shadow: 0 28px 80px rgba(20,35,29,.32);
+}
+
+.contribution-modal label {
+  display: grid;
+  gap: 7px;
+  color: #30453b;
+  font-weight: 700;
+}
+
+.contribution-modal input,
+.contribution-modal select,
+.contribution-modal textarea {
+  width: 100%;
+  border: 1px solid #bdc5bd;
+  border-radius: 12px;
+  padding: 12px 13px;
+  background: white;
+  color: #1f342b;
+  font: inherit;
+}
+
+.contribution-modal textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+@media (min-width: 1120px) {
+  .intention-world-home .intention-world-hero,
+  .intention-world-home .community-inspiration-card,
+  .intention-world-home .community-reflections-card,
+  .intention-world-home .journey-card {
+    grid-column: 1 / -1;
+  }
+
+  .intention-world-home .companion-card {
+    grid-column: span 7;
+  }
+
+  .intention-world-home .intention-practice-card {
+    grid-column: span 5;
+  }
+
+  .intention-world-home .intention-reflection-card {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 700px) {
+  .world-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .world-section-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .contribute-button {
+    align-self: flex-start;
+  }
+
+  .companion-card,
+  .community-inspiration-card,
+  .community-reflections-card {
+    padding: 22px;
+  }
+}
+
