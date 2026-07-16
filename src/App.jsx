@@ -12,6 +12,7 @@ import DiaryPage from './pages/DiaryPage';
 import ProfilePage from './pages/ProfilePage';
 import useJourneyStats from './hooks/useJourneyStats';
 import useIntentionWorld from './hooks/useIntentionWorld';
+import useDailyPractice from './hooks/useDailyPractice';
 import './styles.css';
 
 function localDateKey(date = new Date()) {
@@ -76,6 +77,24 @@ function App() {
     refresh: refreshIntentionWorld
   } = useIntentionWorld({ intention, userId: session?.user?.id });
 
+  const todayKey = localDateKey();
+  const {
+    selectedPractice: todayPractice,
+    selectionSource: todayPracticeSource,
+    recommendations: practiceRecommendations,
+    loading: dailyPracticeLoading,
+    error: dailyPracticeError,
+    selectPractice: selectDailyPractice,
+    suggestPractice: suggestPracticeForIntention,
+    vote: voteForPracticeRecommendation,
+    refresh: refreshDailyPractice
+  } = useDailyPractice({
+    intention,
+    practices,
+    userId: session?.user?.id,
+    dateKey: todayKey
+  });
+
   useEffect(() => {
     const handler = (event) => {
       event.preventDefault();
@@ -126,7 +145,7 @@ function App() {
 
       const { data, error } = await supabase
         .from('daily_intentions')
-        .select('intention_text')
+        .select('intention_text, text')
         .eq('user_id', session.user.id)
         .eq('intention_date', today)
         .maybeSingle();
@@ -139,9 +158,10 @@ function App() {
         return;
       }
 
-      if (data?.intention_text) {
-        setIntention(data.intention_text);
-        setIntentionDraft(data.intention_text);
+      const savedIntention = data?.intention_text || data?.text;
+      if (savedIntention) {
+        setIntention(savedIntention);
+        setIntentionDraft(savedIntention);
         setDailyIntentionLoading(false);
         return;
       }
@@ -153,7 +173,8 @@ function App() {
           {
             user_id: session.user.id,
             intention_date: today,
-            intention_text: automatic
+            intention_text: automatic,
+            text: automatic
           },
           { onConflict: 'user_id,intention_date' }
         );
@@ -430,7 +451,8 @@ function App() {
           {
             user_id: session.user.id,
             intention_date: localDateKey(),
-            intention_text: next
+            intention_text: next,
+            text: next
           },
           { onConflict: 'user_id,intention_date' }
         );
@@ -446,6 +468,7 @@ function App() {
     setIsIntentionModalOpen(false);
     refreshJourneyStats();
     refreshIntentionWorld();
+    refreshDailyPractice();
   }
 
   function closeIntentionModal() {
@@ -525,38 +548,18 @@ function App() {
   }
 
 
-  async function startTodaysPractice(preferredPractice = null) {
+  async function startTodaysPractice(preferredPractice = todayPractice) {
     if (!session?.user) {
       openAuthModal('signin');
       return;
     }
 
-    if (preferredPractice) {
-      startPracticeSession(preferredPractice);
+    if (!preferredPractice) {
+      setPageError('Choose a practice for today first.');
       return;
     }
 
-    setPageError('');
-    const cachedAweWalk = practices.find((practice) => practice.title === 'Awe Walk');
-    if (cachedAweWalk) {
-      startPracticeSession(cachedAweWalk);
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from('practices')
-      .select('id, title, description, instructions, category, duration_minutes, benefit, icon')
-      .eq('title', 'Awe Walk')
-      .eq('is_active', true)
-      .single();
-
-    if (error) {
-      setPageError(error.message);
-      return;
-    }
-
-    setPractices((current) => current.some((practice) => practice.id === data.id) ? current : [data, ...current]);
-    startPracticeSession(data);
+    startPracticeSession(preferredPractice);
   }
 
   function closePracticeSession() {
@@ -740,6 +743,14 @@ function App() {
           journeyStats={journeyStats}
           journeyLoading={journeyLoading}
           practices={practices}
+          todayPractice={todayPractice}
+          todayPracticeSource={todayPracticeSource}
+          dailyPracticeLoading={dailyPracticeLoading}
+          dailyPracticeError={dailyPracticeError}
+          practiceRecommendations={practiceRecommendations}
+          onSelectDailyPractice={selectDailyPractice}
+          onSuggestPractice={suggestPracticeForIntention}
+          onVotePracticeRecommendation={voteForPracticeRecommendation}
           intentionWorldItems={intentionWorldItems}
           intentionWorldLoading={intentionWorldLoading}
           intentionWorldError={intentionWorldError}

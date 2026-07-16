@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import {
-  BookOpen, Camera, ChevronRight, Flame, Heart, Image, Leaf, Lightbulb,
-  Mountain, Music, Palette, Pencil, Plus, Quote, Sparkles, Sprout, Timer,
-  TreePine, X
+  BookOpen, Camera, Check, ChevronRight, Flame, Heart, Image, Leaf, Lightbulb,
+  ListPlus, Mountain, Music, Palette, Pencil, Plus, Quote, Search, Sparkles,
+  Sprout, Timer, TreePine, X
 } from 'lucide-react';
 import { moods } from '../constants/intentions';
 
@@ -34,14 +34,133 @@ function WorldItem({ item, onVote }) {
         : item.body && <p>{item.body}</p>
       }
       {item.creator && <span className="world-item-creator">— {item.creator}</span>}
-      {item.external_url && (
-        <a href={item.external_url} target="_blank" rel="noreferrer">Open source</a>
-      )}
+      {item.external_url && <a href={item.external_url} target="_blank" rel="noreferrer">Open source</a>}
       <button className={`world-love ${item.hasVoted ? 'loved' : ''}`} type="button" onClick={() => onVote(item)}>
         <Heart size={17} fill={item.hasVoted ? 'currentColor' : 'none'} />
         {item.voteCount}
       </button>
     </article>
+  );
+}
+
+function PracticeChooser({
+  practices,
+  selectedPractice,
+  recommendations,
+  onClose,
+  onSelect,
+  onSuggest,
+  onVote
+}) {
+  const [query, setQuery] = useState('');
+  const [error, setError] = useState('');
+  const [savingId, setSavingId] = useState(null);
+
+  const filtered = practices.filter((practice) => {
+    const haystack = `${practice.title} ${practice.description || ''} ${practice.category || ''}`.toLowerCase();
+    return haystack.includes(query.trim().toLowerCase());
+  });
+
+  async function choose(practice) {
+    setSavingId(practice.id);
+    setError('');
+    try {
+      await onSelect(practice);
+      onClose();
+    } catch (nextError) {
+      setError(nextError.message);
+    } finally {
+      setSavingId(null);
+    }
+  }
+
+  async function suggest(practice) {
+    setSavingId(practice.id);
+    setError('');
+    try {
+      await onSuggest(practice.id);
+    } catch (nextError) {
+      setError(nextError.message);
+    } finally {
+      setSavingId(null);
+    }
+  }
+
+  async function vote(recommendation) {
+    setError('');
+    try {
+      await onVote(recommendation);
+    } catch (nextError) {
+      setError(nextError.message);
+    }
+  }
+
+  return (
+    <div className="modal-backdrop practice-picker-backdrop" onMouseDown={onClose}>
+      <section className="practice-picker-modal" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="modal-heading">
+          <div>
+            <p className="eyebrow">CHOOSE TODAY’S PRACTICE</p>
+            <h2>Pick what fits your intention</h2>
+            <p>The automatic recommendation is only a starting point. You can change it at any time today.</p>
+          </div>
+          <button className="modal-close" type="button" onClick={onClose}><X size={20} /></button>
+        </div>
+
+        {recommendations.length > 0 && (
+          <section className="practice-picker-section">
+            <h3>Community matches</h3>
+            <div className="practice-recommendation-list">
+              {recommendations.map((recommendation) => (
+                <article className="practice-recommendation-row" key={recommendation.id}>
+                  <button className="practice-recommendation-main" type="button" onClick={() => choose(recommendation.practice)}>
+                    <div>
+                      <strong>{recommendation.practice.title}</strong>
+                      <span>{recommendation.practice.description}</span>
+                    </div>
+                    {selectedPractice?.id === recommendation.practice.id && <Check size={20} />}
+                  </button>
+                  <button className={`practice-vote-button ${recommendation.hasVoted ? 'loved' : ''}`} type="button" onClick={() => vote(recommendation)}>
+                    <Heart size={17} fill={recommendation.hasVoted ? 'currentColor' : 'none'} />
+                    {recommendation.voteCount}
+                  </button>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section className="practice-picker-section">
+          <div className="practice-picker-section-heading">
+            <h3>All practices</h3>
+            <label className="practice-search">
+              <Search size={17} />
+              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search practices" />
+            </label>
+          </div>
+
+          <div className="practice-option-list">
+            {filtered.map((practice) => (
+              <article className="practice-option-row" key={practice.id}>
+                <button className="practice-option-main" type="button" onClick={() => choose(practice)} disabled={savingId === practice.id}>
+                  <div>
+                    <strong>{practice.title}</strong>
+                    <span>{practice.description}</span>
+                  </div>
+                  {selectedPractice?.id === practice.id && <Check size={20} />}
+                </button>
+                <button className="suggest-match-button" type="button" onClick={() => suggest(practice)} disabled={savingId === practice.id}>
+                  <ListPlus size={17} />
+                  Suggest match
+                </button>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {error && <p className="auth-alert error">{error}</p>}
+      </section>
+    </div>
   );
 }
 
@@ -53,6 +172,14 @@ export default function TodayPage({
   journeyStats,
   journeyLoading,
   practices,
+  todayPractice,
+  todayPracticeSource,
+  dailyPracticeLoading,
+  dailyPracticeError,
+  practiceRecommendations,
+  onSelectDailyPractice,
+  onSuggestPractice,
+  onVotePracticeRecommendation,
   intentionWorldItems,
   intentionWorldLoading,
   intentionWorldError,
@@ -67,6 +194,7 @@ export default function TodayPage({
   onSaveMood
 }) {
   const [isContributionOpen, setIsContributionOpen] = useState(false);
+  const [isPracticePickerOpen, setIsPracticePickerOpen] = useState(false);
   const [contribution, setContribution] = useState({
     contentType: 'quote',
     title: '',
@@ -83,15 +211,16 @@ export default function TodayPage({
     [intentionWorldItems]
   );
   const prompt = intentionWorldItems.find((item) => item.content_type === 'prompt');
-  const linkedPracticeItem = intentionWorldItems.find((item) => item.content_type === 'practice' && item.practice_id);
-  const todayPractice = practices.find((practice) => practice.id === linkedPracticeItem?.practice_id)
-    || practices.find((practice) => practice.title === linkedPracticeItem?.title)
-    || practices.find((practice) => practice.title === 'Awe Walk')
-    || practices[0];
   const inspiration = intentionWorldItems
     .filter((item) => item.id !== companion?.id && !['prompt', 'practice'].includes(item.content_type))
     .slice(0, 8);
   const communityReflections = intentionWorldItems.filter((item) => item.content_type === 'reflection').slice(0, 3);
+
+  const recommendationLabel = {
+    automatic: 'Automatically recommended for today',
+    community: 'Top community match for this intention',
+    manual: 'Chosen by you for today'
+  }[todayPracticeSource] || 'Recommended for today';
 
   async function submitContribution(event) {
     event.preventDefault();
@@ -99,14 +228,7 @@ export default function TodayPage({
     setContributionError('');
     try {
       await onContributeToIntention(contribution);
-      setContribution({
-        contentType: 'quote',
-        title: '',
-        body: '',
-        creator: '',
-        externalUrl: '',
-        imageFile: null
-      });
+      setContribution({ contentType: 'quote', title: '', body: '', creator: '', externalUrl: '', imageFile: null });
       setIsContributionOpen(false);
     } catch (error) {
       setContributionError(error.message || 'Could not add this contribution.');
@@ -130,7 +252,7 @@ export default function TodayPage({
           <div className="intention-heading">
             <div>
               <p className="eyebrow">TODAY’S INTENTION</p>
-              <span className="today-date">{new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}</span>
+              <span className="recommendation-badge"><Sparkles size={14} /> Automatically recommended · change anytime</span>
             </div>
             <button className="intention-edit-button" type="button" aria-label="Choose today’s intention" onClick={onEditIntention}>
               <Pencil size={21} strokeWidth={1.7} />
@@ -147,56 +269,77 @@ export default function TodayPage({
           <div><p className="eyebrow">TODAY’S COMPANION</p><h2>Something to carry with you</h2></div>
           <Sparkles size={27} />
         </div>
-        {intentionWorldLoading ? (
-          <p className="page-status">Gathering today’s world…</p>
-        ) : companion ? (
-          <WorldItem item={companion} onVote={vote} />
+        {intentionWorldLoading ? <p className="page-status">Gathering today’s world…</p>
+          : companion ? <WorldItem item={companion} onVote={vote} />
+          : <p className="page-status">This intention is waiting for its first community contribution.</p>}
+      </article>
+
+      <article className="card practice-card intention-practice-card">
+        <div className="practice-card-topline">
+          <div>
+            <p className="eyebrow">TODAY’S RECOMMENDED PRACTICE</p>
+            <span className="recommendation-badge"><Sparkles size={14} /> {recommendationLabel}</span>
+          </div>
+          <button className="change-practice-button" type="button" onClick={() => setIsPracticePickerOpen(true)}>
+            Change practice
+          </button>
+        </div>
+
+        {dailyPracticeLoading ? (
+          <p className="page-status">Choosing a practice for today…</p>
+        ) : todayPractice ? (
+          <>
+            <div className="practice-row">
+              <div className="round-icon"><TreePine size={50} strokeWidth={1.5} /></div>
+              <div className="practice-copy">
+                <h2>{todayPractice.title}</h2>
+                <p>{todayPractice.description}</p>
+                <div className="meta-row">
+                  <span><Timer size={21} /> {todayPractice.duration_minutes || '5–15'} min</span>
+                  {todayPractice.benefit && <><i /><span><Leaf size={21} /> {todayPractice.benefit}</span></>}
+                </div>
+              </div>
+              <ChevronRight className="chevron" size={35} strokeWidth={1.6} />
+            </div>
+            <button className="primary-button" type="button" onClick={() => onStartPractice(todayPractice)}>Start Practice</button>
+          </>
         ) : (
-          <p className="page-status">This intention is waiting for its first community contribution.</p>
+          <div className="world-empty">
+            <p>No practice is available yet.</p>
+            <button className="secondary-button" onClick={() => setIsPracticePickerOpen(true)}>Choose one</button>
+          </div>
         )}
+
+        {(pageError || dailyPracticeError) && <p className="intention-alert" role="alert">{pageError || dailyPracticeError}</p>}
+
+        <div className="community-practice-preview">
+          <div>
+            <strong>Practices people connect with this intention</strong>
+            <span>{practiceRecommendations.length
+              ? `${practiceRecommendations.length} community ${practiceRecommendations.length === 1 ? 'match' : 'matches'}`
+              : 'No community matches yet'}</span>
+          </div>
+          <button type="button" onClick={() => setIsPracticePickerOpen(true)}>
+            <ListPlus size={18} />
+            View or suggest
+          </button>
+        </div>
       </article>
 
       <section className="card community-inspiration-card">
         <div className="world-section-heading">
           <div><p className="eyebrow">COMMUNITY INSPIRATION</p><h2>Things people believe belong here</h2></div>
-          <button className="contribute-button" type="button" onClick={() => setIsContributionOpen(true)}>
-            <Plus size={18} /> Contribute
-          </button>
+          <button className="contribute-button" type="button" onClick={() => setIsContributionOpen(true)}><Plus size={18} /> Contribute</button>
         </div>
         {intentionWorldError && <p className="intention-alert">{intentionWorldError}</p>}
         {contributionError && <p className="intention-alert">{contributionError}</p>}
-        {inspiration.length ? (
-          <div className="world-grid">{inspiration.map((item) => <WorldItem key={item.id} item={item} onVote={vote} />)}</div>
-        ) : (
-          <div className="world-empty"><p>No community favorites yet.</p><button className="secondary-button" onClick={() => setIsContributionOpen(true)}>Add the first one</button></div>
-        )}
+        {inspiration.length
+          ? <div className="world-grid">{inspiration.map((item) => <WorldItem key={item.id} item={item} onVote={vote} />)}</div>
+          : <div className="world-empty"><p>No community favorites yet.</p><button className="secondary-button" onClick={() => setIsContributionOpen(true)}>Add the first one</button></div>}
       </section>
 
-      <article className="card practice-card intention-practice-card">
-        <p className="eyebrow">TODAY’S PRACTICE</p>
-        <div className="practice-row">
-          <div className="round-icon"><TreePine size={50} strokeWidth={1.5} /></div>
-          <div className="practice-copy">
-            <h2>{todayPractice?.title || 'A practice for this intention'}</h2>
-            <p>{todayPractice?.description || 'Choose a practice from the library and connect it to today’s intention.'}</p>
-            <div className="meta-row">
-              <span><Timer size={21} /> {todayPractice?.duration_minutes || '5–15'} min</span>
-              {todayPractice?.benefit && <><i /><span><Leaf size={21} /> {todayPractice.benefit}</span></>}
-            </div>
-          </div>
-          <ChevronRight className="chevron" size={35} strokeWidth={1.6} />
-        </div>
-        <button className="primary-button" type="button" onClick={() => onStartPractice(todayPractice)} disabled={!todayPractice}>Start Practice</button>
-        {pageError && <p className="intention-alert" role="alert">{pageError}</p>}
-      </article>
-
       <article className="card reflection-card intention-reflection-card">
-        <div className="reflection-heading">
-          <div>
-            <p className="eyebrow">EVENING REFLECTION</p>
-            <h2>{prompt?.body || `How did “${intention}” change the way you moved through today?`}</h2>
-          </div>
-        </div>
+        <div className="reflection-heading"><div><p className="eyebrow">EVENING REFLECTION</p><h2>{prompt?.body || `How did “${intention}” change the way you moved through today?`}</h2></div></div>
         <form className="daily-reflection-form" onSubmit={onSaveReflection}>
           <textarea value={reflectionDraft} onChange={(event) => onReflectionChange(event.target.value)} placeholder="Write what you noticed, learned, or want to remember…" aria-label="Daily reflection" />
           <button className="save-button" type="submit" disabled={reflectionSaving || !reflectionDraft.trim()}>{reflectionSaving ? 'Saving…' : 'Save reflection'}</button>
@@ -214,9 +357,7 @@ export default function TodayPage({
       {communityReflections.length > 0 && (
         <section className="card community-reflections-card">
           <div className="world-section-heading"><div><p className="eyebrow">COMMUNITY REFLECTIONS</p><h2>How others lived this intention</h2></div></div>
-          <div className="community-reflection-list">
-            {communityReflections.map((item) => <WorldItem key={item.id} item={item} onVote={vote} />)}
-          </div>
+          <div className="community-reflection-list">{communityReflections.map((item) => <WorldItem key={item.id} item={item} onVote={vote} />)}</div>
         </section>
       )}
 
@@ -228,6 +369,18 @@ export default function TodayPage({
           <div className="journey-item meaning"><Mountain size={35} strokeWidth={1.4} /><b>Meaning Score</b><div className="score-bars">{Array.from({ length: 10 }).map((_, index) => <span key={index} className={!journeyLoading && index < Math.round(journeyStats.meaningScore) ? 'filled' : ''} />)}</div><small>{journeyLoading ? 'Calculating…' : `${journeyStats.meaningScore.toFixed(1)} / 10`}</small></div>
         </div>
       </article>
+
+      {isPracticePickerOpen && (
+        <PracticeChooser
+          practices={practices}
+          selectedPractice={todayPractice}
+          recommendations={practiceRecommendations}
+          onClose={() => setIsPracticePickerOpen(false)}
+          onSelect={onSelectDailyPractice}
+          onSuggest={onSuggestPractice}
+          onVote={onVotePracticeRecommendation}
+        />
+      )}
 
       {isContributionOpen && (
         <div className="modal-backdrop" onMouseDown={() => !contributionSaving && setIsContributionOpen(false)}>

@@ -1970,3 +1970,226 @@ button { font: inherit; }
   }
 }
 
+/* Daily practice recommendation and community matching */
+.recommendation-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  color: #6b5a36;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.practice-card-topline {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.practice-card-topline .eyebrow {
+  margin-bottom: 0;
+}
+
+.change-practice-button {
+  flex: 0 0 auto;
+  border: 1px solid rgba(49, 93, 69, .2);
+  border-radius: 999px;
+  padding: 9px 13px;
+  background: rgba(255, 255, 255, .72);
+  color: var(--green-dark);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.community-practice-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 18px;
+  border-top: 1px solid #dfddd5;
+  padding-top: 17px;
+}
+
+.community-practice-preview > div {
+  display: grid;
+  gap: 3px;
+}
+
+.community-practice-preview span {
+  color: #68736c;
+  font-size: 13px;
+}
+
+.community-practice-preview button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  border-radius: 10px;
+  padding: 9px 12px;
+  background: #e7e9df;
+  color: #304b3d;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.practice-picker-backdrop {
+  z-index: 140;
+}
+
+.practice-picker-modal {
+  width: min(850px, 100%);
+  max-height: min(860px, calc(100vh - 40px));
+  overflow-y: auto;
+  border: 1px solid rgba(49, 93, 69, .12);
+  border-radius: 26px;
+  padding: 28px;
+  background: #f9f5ee;
+  box-shadow: 0 28px 80px rgba(20, 35, 29, .32);
+}
+
+.practice-picker-section {
+  margin-top: 25px;
+}
+
+.practice-picker-section > h3,
+.practice-picker-section-heading h3 {
+  margin: 0;
+  font: 700 19px/1.3 'Libre Baskerville', serif;
+}
+
+.practice-picker-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 12px;
+}
+
+.practice-search {
+  min-width: 260px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #c8cdc6;
+  border-radius: 11px;
+  padding: 9px 11px;
+  background: white;
+}
+
+.practice-search input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+}
+
+.practice-recommendation-list,
+.practice-option-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.practice-recommendation-row,
+.practice-option-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  border: 1px solid #deddd5;
+  border-radius: 15px;
+  background: rgba(255, 255, 255, .66);
+  overflow: hidden;
+}
+
+.practice-recommendation-main,
+.practice-option-main {
+  min-width: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  border: 0;
+  padding: 15px 17px;
+  background: transparent;
+  color: #26332e;
+  text-align: left;
+  cursor: pointer;
+}
+
+.practice-recommendation-main > div,
+.practice-option-main > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.practice-recommendation-main span,
+.practice-option-main span {
+  color: #667169;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.practice-vote-button,
+.suggest-match-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  border-left: 1px solid #deddd5;
+  padding: 10px 14px;
+  background: #f0eee8;
+  color: #43544b;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.practice-vote-button.loved {
+  color: #a1433d;
+  background: #f5e5e1;
+}
+
+.suggest-match-button {
+  min-width: 136px;
+  color: var(--green-dark);
+}
+
+@media (max-width: 600px) {
+  .practice-card-topline,
+  .community-practice-preview,
+  .practice-picker-section-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .change-practice-button {
+    align-self: flex-start;
+  }
+
+  .practice-picker-modal {
+    width: 100%;
+    max-height: 92vh;
+    border-radius: 24px 24px 0 0;
+    padding: 22px 16px calc(20px + env(safe-area-inset-bottom));
+  }
+
+  .practice-search {
+    min-width: 0;
+  }
+
+  .practice-recommendation-row,
+  .practice-option-row {
+    grid-template-columns: 1fr;
+  }
+
+  .practice-vote-button,
+  .suggest-match-button {
+    border-left: 0;
+    border-top: 1px solid #deddd5;
+  }
+}
+
