@@ -3,9 +3,18 @@ import { createRoot } from 'react-dom/client';
 import {
   Bell, BookOpen, ChevronRight, CircleUserRound, Flame, Home, Leaf,
   Menu, Mountain, Pencil, Quote, Sparkles, Sprout, Sun, Timer,
-  TreePine, UsersRound
+  TreePine, UsersRound, X
 } from 'lucide-react';
 import './styles.css';
+
+const intentionSuggestions = [
+  'I will pay attention to beauty.',
+  'I will meet uncertainty with curiosity.',
+  'I will make room for wonder today.',
+  'I will respond with patience instead of reacting.',
+  'I will notice what is already enough.',
+  'I will leave people better than I found them.'
+];
 
 const moods = [
   { label: 'Hard', face: '☹' },
@@ -21,7 +30,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('Today');
   const [intention, setIntention] = useState(() => localStorage.getItem('groundedIntention') || 'I will pay attention to beauty.');
   const [intentionDraft, setIntentionDraft] = useState(intention);
-  const [isEditingIntention, setIsEditingIntention] = useState(false);
+  const [isIntentionModalOpen, setIsIntentionModalOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
 
   useEffect(() => {
@@ -64,12 +73,12 @@ function App() {
     if (!next) return;
     setIntention(next);
     localStorage.setItem('groundedIntention', next);
-    setIsEditingIntention(false);
+    setIsIntentionModalOpen(false);
   }
 
   function cancelIntentionEdit() {
     setIntentionDraft(intention);
-    setIsEditingIntention(false);
+    setIsIntentionModalOpen(false);
   }
 
   function togglePractice() {
@@ -109,42 +118,25 @@ function App() {
       </section>
 
       <section className="content-stack">
-        <article className={`card intention-card ${isEditingIntention ? 'editing' : ''}`}>
+        <article className="card intention-card">
           <div className="intention-content">
             <div className="intention-heading">
               <p className="eyebrow">TODAY’S INTENTION</p>
-              {!isEditingIntention && (
-                <button
-                  className="intention-edit-button"
-                  type="button"
-                  aria-label="Edit today’s intention"
-                  onClick={() => setIsEditingIntention(true)}
-                >
-                  <Pencil size={21} strokeWidth={1.7} />
-                </button>
-              )}
+              <button
+                className="intention-edit-button"
+                type="button"
+                aria-label="Choose today’s intention"
+                onClick={() => {
+                  setIntentionDraft(intention);
+                  setIsIntentionModalOpen(true);
+                }}
+              >
+                <Pencil size={21} strokeWidth={1.7} />
+              </button>
             </div>
-
-            {isEditingIntention ? (
-              <form className="intention-form" onSubmit={saveIntention}>
-                <textarea
-                  value={intentionDraft}
-                  onChange={(event) => setIntentionDraft(event.target.value)}
-                  maxLength={140}
-                  rows={3}
-                  autoFocus
-                  aria-label="Today’s intention"
-                />
-                <div className="intention-actions">
-                  <button type="button" className="secondary-button" onClick={cancelIntentionEdit}>Cancel</button>
-                  <button type="submit" className="save-button" disabled={!intentionDraft.trim()}>Save</button>
-                </div>
-              </form>
-            ) : (
-              <blockquote>“{intention}”</blockquote>
-            )}
+            <blockquote>“{intention}”</blockquote>
           </div>
-          {!isEditingIntention && <div className="botanical"><Leaf size={92} strokeWidth={1.1} /></div>}
+          <div className="botanical"><Leaf size={92} strokeWidth={1.1} /></div>
         </article>
 
         <article className="card practice-card">
@@ -220,6 +212,62 @@ function App() {
           </div>
         </article>
       </section>
+
+      {isIntentionModalOpen && (
+        <div className="modal-backdrop" role="presentation" onMouseDown={closeIntentionModal}>
+          <section
+            className="intention-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="intention-modal-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="modal-heading">
+              <div>
+                <p className="eyebrow">DAILY DIRECTION</p>
+                <h2 id="intention-modal-title">Choose an intention</h2>
+                <p>Start with one of these, or write something that feels true for today.</p>
+              </div>
+              <button className="modal-close" type="button" aria-label="Close" onClick={closeIntentionModal}>
+                <X size={23} />
+              </button>
+            </div>
+
+            <div className="suggestion-grid" aria-label="Recommended intentions">
+              {intentionSuggestions.map((suggestion) => (
+                <button
+                  type="button"
+                  key={suggestion}
+                  className={`suggestion-card ${intentionDraft === suggestion ? 'selected' : ''}`}
+                  onClick={() => chooseSuggestedIntention(suggestion)}
+                >
+                  “{suggestion}”
+                </button>
+              ))}
+            </div>
+
+            <form className="modal-custom-form" onSubmit={saveIntention}>
+              <label htmlFor="custom-intention">Write your own</label>
+              <textarea
+                id="custom-intention"
+                value={intentionDraft}
+                onChange={(event) => setIntentionDraft(event.target.value)}
+                maxLength={140}
+                rows={3}
+                placeholder="Today, I will…"
+                autoFocus
+              />
+              <div className="modal-footer">
+                <span>{intentionDraft.length}/140</span>
+                <div className="intention-actions">
+                  <button type="button" className="secondary-button" onClick={closeIntentionModal}>Cancel</button>
+                  <button type="submit" className="save-button" disabled={!intentionDraft.trim()}>Use this intention</button>
+                </div>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
 
       <nav className="bottom-nav" aria-label="Primary navigation">
         {[

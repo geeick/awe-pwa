@@ -442,3 +442,137 @@ button { font: inherit; }
     font-size: 19px;
   }
 }
+
+/* Intention chooser modal */
+.modal-backdrop {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(24, 39, 33, .58);
+  backdrop-filter: blur(7px);
+}
+
+.intention-modal {
+  width: min(720px, 100%);
+  max-height: min(820px, calc(100vh - 40px));
+  overflow-y: auto;
+  border: 1px solid rgba(49, 93, 69, .12);
+  border-radius: 26px;
+  padding: 28px;
+  background: #f9f5ee;
+  box-shadow: 0 28px 80px rgba(20, 35, 29, .32);
+}
+
+.modal-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 22px;
+}
+
+.modal-heading .eyebrow { margin-bottom: 8px; }
+.modal-heading h2 {
+  margin: 0;
+  font: 700 29px/1.2 'Libre Baskerville', serif;
+  color: #20382e;
+}
+.modal-heading p:last-child {
+  max-width: 560px;
+  margin: 9px 0 0;
+  color: #58665f;
+  line-height: 1.5;
+}
+
+.modal-close {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: #ebe7df;
+  color: #30453b;
+  cursor: pointer;
+}
+
+.suggestion-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 11px;
+  margin-top: 24px;
+}
+
+.suggestion-card {
+  min-height: 88px;
+  border: 1px solid #d9d8cf;
+  border-radius: 15px;
+  padding: 15px 17px;
+  background: rgba(255, 255, 255, .64);
+  color: #263f34;
+  text-align: left;
+  font: 400 15px/1.48 'Libre Baskerville', serif;
+  cursor: pointer;
+  transition: border-color .18s, background .18s, transform .18s;
+}
+.suggestion-card:hover { transform: translateY(-1px); border-color: #73907d; }
+.suggestion-card.selected {
+  border-color: #356c50;
+  background: #e3eadf;
+  box-shadow: 0 0 0 2px rgba(53, 108, 80, .1);
+}
+
+.modal-custom-form {
+  margin-top: 24px;
+  padding-top: 22px;
+  border-top: 1px solid #ddd9d0;
+}
+.modal-custom-form label {
+  display: block;
+  margin-bottom: 9px;
+  color: #30453b;
+  font-weight: 700;
+}
+.modal-custom-form textarea {
+  width: 100%;
+  min-height: 112px;
+  resize: vertical;
+  border: 1px solid #b9c2b9;
+  border-radius: 14px;
+  padding: 14px 16px;
+  background: white;
+  color: #17352f;
+  font: 20px/1.5 'Libre Baskerville', serif;
+  outline: none;
+}
+.modal-custom-form textarea:focus {
+  border-color: #356c50;
+  box-shadow: 0 0 0 3px rgba(53, 108, 80, .13);
+}
+.modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-top: 12px;
+}
+.modal-footer > span { color: #738078; font-size: 12px; }
+
+@media (max-width: 600px) {
+  .modal-backdrop { align-items: end; padding: 0; }
+  .intention-modal {
+    width: 100%;
+    max-height: 88vh;
+    border-radius: 24px 24px 0 0;
+    padding: 23px 18px calc(20px + env(safe-area-inset-bottom));
+  }
+  .modal-heading h2 { font-size: 24px; }
+  .suggestion-grid { grid-template-columns: 1fr; }
+  .suggestion-card { min-height: 0; }
+  .modal-footer { align-items: flex-end; }
+  .intention-actions { flex-wrap: wrap; justify-content: flex-end; }
+  .save-button { min-width: 142px; }
+}
