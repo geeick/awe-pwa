@@ -7,6 +7,10 @@ export default function TodayPage({
   pageError,
   journeyStats,
   journeyLoading,
+  reflectionDraft,
+  reflectionSaving,
+  onReflectionChange,
+  onSaveReflection,
   onEditIntention,
   onStartPractice,
   onSaveMood
@@ -44,7 +48,25 @@ export default function TodayPage({
       </article>
 
       <article className="card reflection-card">
-        <div className="reflection-heading"><div><p className="eyebrow">EVENING REFLECTION</p><h2>How did today change you?</h2></div></div>
+        <div className="reflection-heading">
+          <div>
+            <p className="eyebrow">EVENING REFLECTION</p>
+            <h2>How did today change you?</h2>
+          </div>
+        </div>
+
+        <form className="daily-reflection-form" onSubmit={onSaveReflection}>
+          <textarea
+            value={reflectionDraft}
+            onChange={(event) => onReflectionChange(event.target.value)}
+            placeholder="Write what you noticed, learned, or want to remember…"
+            aria-label="Daily reflection"
+          />
+          <button className="save-button" type="submit" disabled={reflectionSaving || !reflectionDraft.trim()}>
+            {reflectionSaving ? 'Saving…' : 'Save reflection'}
+          </button>
+        </form>
+
         <p className="rate-label">Rate today</p>
         <div className="mood-row">
           {moods.map((mood) => (

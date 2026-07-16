@@ -15,6 +15,8 @@ import './styles.css';
 
 function App() {
   const [selectedMood, setSelectedMood] = useState(() => localStorage.getItem('groundedMood') || '');
+  const [reflectionDraft, setReflectionDraft] = useState('');
+  const [reflectionSaving, setReflectionSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('Today');
   const [intention, setIntention] = useState(() => localStorage.getItem('groundedIntention') || 'I will pay attention to beauty.');
   const [intentionDraft, setIntentionDraft] = useState(intention);
@@ -47,6 +49,8 @@ function App() {
   const [diaryEntries, setDiaryEntries] = useState([]);
   const [diaryLoading, setDiaryLoading] = useState(false);
   const [diaryPhotoUrls, setDiaryPhotoUrls] = useState({});
+  const [diaryIntentions, setDiaryIntentions] = useState([]);
+  const [diaryCheckIns, setDiaryCheckIns] = useState([]);
 
   const { stats: journeyStats, loading: journeyLoading, refresh: refreshJourneyStats } = useJourneyStats(session?.user?.id);
 
@@ -157,20 +161,35 @@ function App() {
     setPageError('');
 
     async function loadDiary() {
-      const { data, error } = await supabase
-        .from('practice_diary_entries')
-        .select('id, practice_id, practice_title, notes, photo_paths, status, duration_minutes, started_at, completed_at, created_at')
-        .order('created_at', { ascending: false });
+      const [practiceResult, intentionResult, checkInResult] = await Promise.all([
+        supabase
+          .from('practice_diary_entries')
+          .select('id, practice_id, practice_title, notes, photo_paths, status, duration_minutes, started_at, completed_at, created_at')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('daily_intentions')
+          .select('intention_date, intention_text')
+          .order('intention_date', { ascending: false }),
+        supabase
+          .from('daily_check_ins')
+          .select('check_in_date, mood_label, mood_score, reflection_text')
+          .order('check_in_date', { ascending: false })
+      ]);
 
       if (!active) return;
+
+      const error = practiceResult.error || intentionResult.error || checkInResult.error;
       if (error) {
         setPageError(error.message);
         setDiaryLoading(false);
         return;
       }
 
-      const entries = data || [];
+      const entries = practiceResult.data || [];
       setDiaryEntries(entries);
+      setDiaryIntentions(intentionResult.data || []);
+      setDiaryCheckIns(checkInResult.data || []);
+
       const paths = entries.flatMap((entry) => entry.photo_paths || []);
       if (paths.length) {
         const { data: signed, error: signedError } = await supabase.storage
@@ -186,6 +205,7 @@ function App() {
       } else {
         setDiaryPhotoUrls({});
       }
+
       setDiaryLoading(false);
     }
 
@@ -212,6 +232,51 @@ function App() {
 
   const userName = session?.user?.user_metadata?.display_name || session?.user?.email?.split('@')[0] || 'there';
 
+  function localDateKey(date = new Date()) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  async function saveReflection(event) {
+    event.preventDefault();
+    if (!session?.user || !reflectionDraft.trim()) {
+      if (!session?.user) openAuthModal('signin');
+      return;
+    }
+
+    setReflectionSaving(true);
+    setPageError('');
+
+    const { error } = await supabase
+      .from('daily_check_ins')
+      .upsert(
+        {
+          user_id: session.user.id,
+          check_in_date: localDateKey(),
+          reflection_text: reflectionDraft.trim()
+        },
+        { onConflict: 'user_id,check_in_date' }
+      );
+
+    if (error) {
+      setPageError(error.message);
+    } else {
+      setDiaryCheckIns((current) => {
+        const today = localDateKey();
+        const existing = current.find((item) => item.check_in_date === today);
+        const updated = { ...existing, check_in_date: today, reflection_text: reflectionDraft.trim() };
+        return existing
+          ? current.map((item) => item.check_in_date === today ? updated : item)
+          : [updated, ...current];
+      });
+      refreshJourneyStats();
+    }
+
+    setReflectionSaving(false);
+  }
+
   async function saveMood(label) {
     setSelectedMood(label);
     localStorage.setItem('groundedMood', label);
@@ -224,7 +289,7 @@ function App() {
       .upsert(
         {
           user_id: session.user.id,
-          check_in_date: new Date().toISOString().slice(0, 10),
+          check_in_date: localDateKey(),
           mood_label: label,
           mood_score: moodScore
         },
@@ -281,7 +346,7 @@ function App() {
         .upsert(
           {
             user_id: session.user.id,
-            intention_date: new Date().toISOString().slice(0, 10),
+            intention_date: localDateKey(),
             intention_text: next
           },
           { onConflict: 'user_id,intention_date' }
@@ -585,6 +650,10 @@ function App() {
           pageError={pageError}
           journeyStats={journeyStats}
           journeyLoading={journeyLoading}
+          reflectionDraft={reflectionDraft}
+          reflectionSaving={reflectionSaving}
+          onReflectionChange={setReflectionDraft}
+          onSaveReflection={saveReflection}
           onEditIntention={openIntentionChooser}
           onStartPractice={startTodaysPractice}
           onSaveMood={saveMood}
@@ -606,6 +675,8 @@ function App() {
           loading={diaryLoading}
           error={pageError}
           entries={diaryEntries}
+          intentions={diaryIntentions}
+          checkIns={diaryCheckIns}
           photoUrls={diaryPhotoUrls}
           onOpenAuth={openAuthModal}
           onBrowsePractices={() => setActiveTab('Practice')}
