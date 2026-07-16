@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import {
   Bell, BookOpen, ChevronRight, CircleUserRound, Flame, Home, Leaf,
   Globe2, LogIn, LogOut, Menu, Mountain, Pencil, Quote, Sparkles, Sprout, Star, Sun,
-  Timer, Trash2, TreePine, UsersRound, X
+  Timer, Trash2, TreePine, UsersRound, X, Plus
 } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import './styles.css';
@@ -49,6 +49,15 @@ function App() {
   const [communityIntentions, setCommunityIntentions] = useState([]);
   const [communityLoading, setCommunityLoading] = useState(false);
   const [communityError, setCommunityError] = useState('');
+  const [practices, setPractices] = useState([]);
+  const [practicesLoading, setPracticesLoading] = useState(false);
+  const [pageError, setPageError] = useState('');
+  const [commonplaceEntries, setCommonplaceEntries] = useState([]);
+  const [commonplaceForm, setCommonplaceForm] = useState({ quote_text: '', author: '', source_title: '', reflection: '' });
+  const [wonderEntries, setWonderEntries] = useState([]);
+  const [wonderDraft, setWonderDraft] = useState('');
+  const [wonderType, setWonderType] = useState('awe');
+  const [pageSubmitting, setPageSubmitting] = useState(false);
 
   useEffect(() => {
     const handler = (event) => {
@@ -107,7 +116,7 @@ function App() {
   }, [session?.user?.id]);
 
   useEffect(() => {
-    const exploreVisible = activeTab === 'Explore' || (isIntentionModalOpen && intentionFilter === 'explore');
+    const exploreVisible = isIntentionModalOpen && intentionFilter === 'explore';
     if (!exploreVisible || !session?.user) return;
     let active = true;
     setCommunityLoading(true);
@@ -125,7 +134,60 @@ function App() {
         setCommunityLoading(false);
       });
     return () => { active = false; };
-  }, [activeTab, intentionFilter, isIntentionModalOpen, session?.user?.id]);
+  }, [intentionFilter, isIntentionModalOpen, session?.user?.id]);
+
+  useEffect(() => {
+    if (activeTab !== 'Practice') return;
+    let active = true;
+    setPracticesLoading(true);
+    setPageError('');
+    supabase
+      .from('practices')
+      .select('id, title, description, instructions, category, duration_minutes, benefit, icon')
+      .eq('is_active', true)
+      .order('is_featured', { ascending: false })
+      .order('title')
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) setPageError(error.message);
+        else setPractices(data || []);
+        setPracticesLoading(false);
+      });
+    return () => { active = false; };
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== 'Commonplace' || !session?.user) return;
+    let active = true;
+    setPageError('');
+    supabase
+      .from('saved_quotes')
+      .select('id, quote_text, author, source_title, reflection, created_at')
+      .order('created_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) setPageError(error.message);
+        else setCommonplaceEntries(data || []);
+      });
+    return () => { active = false; };
+  }, [activeTab, session?.user?.id]);
+
+  useEffect(() => {
+    if (activeTab !== 'Wonder' || !session?.user) return;
+    let active = true;
+    setPageError('');
+    supabase
+      .from('journal_entries')
+      .select('id, body, entry_type, created_at')
+      .in('entry_type', ['awe', 'prayer', 'gratitude', 'freeform'])
+      .order('created_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) setPageError(error.message);
+        else setWonderEntries(data || []);
+      });
+    return () => { active = false; };
+  }, [activeTab, session?.user?.id]);
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
@@ -262,6 +324,53 @@ function App() {
     setStarredIntentions((current) => current.map((saved) => saved.id === item.id ? data : saved));
   }
 
+  async function addCommonplaceEntry(event) {
+    event.preventDefault();
+    if (!session?.user) { openAuthModal('signin'); return; }
+    if (!commonplaceForm.quote_text.trim()) return;
+    setPageSubmitting(true);
+    setPageError('');
+    const payload = {
+      user_id: session.user.id,
+      quote_text: commonplaceForm.quote_text.trim(),
+      author: commonplaceForm.author.trim() || null,
+      source_title: commonplaceForm.source_title.trim() || null,
+      reflection: commonplaceForm.reflection.trim() || null
+    };
+    const { data, error } = await supabase.from('saved_quotes').insert(payload).select().single();
+    if (error) setPageError(error.message);
+    else {
+      setCommonplaceEntries((current) => [data, ...current]);
+      setCommonplaceForm({ quote_text: '', author: '', source_title: '', reflection: '' });
+    }
+    setPageSubmitting(false);
+  }
+
+  async function removeCommonplaceEntry(id) {
+    const { error } = await supabase.from('saved_quotes').delete().eq('id', id);
+    if (error) setPageError(error.message);
+    else setCommonplaceEntries((current) => current.filter((item) => item.id !== id));
+  }
+
+  async function addWonderEntry(event) {
+    event.preventDefault();
+    if (!session?.user) { openAuthModal('signin'); return; }
+    if (!wonderDraft.trim()) return;
+    setPageSubmitting(true);
+    setPageError('');
+    const { data, error } = await supabase
+      .from('journal_entries')
+      .insert({ user_id: session.user.id, body: wonderDraft.trim(), entry_type: wonderType })
+      .select('id, body, entry_type, created_at')
+      .single();
+    if (error) setPageError(error.message);
+    else {
+      setWonderEntries((current) => [data, ...current]);
+      setWonderDraft('');
+    }
+    setPageSubmitting(false);
+  }
+
   function togglePractice() {
     const next = !practiceDone;
     setPracticeDone(next);
@@ -384,144 +493,87 @@ function App() {
         </div>
       </section>
 
-      {activeTab === 'Explore' ? (
-        <section className="explore-page">
-          <header className="explore-heading">
-            <p className="eyebrow">COMMUNITY INTENTIONS</p>
-            <h2>Explore what is guiding others</h2>
-            <p>Public intentions shared by members of the community. Star one to keep a private copy.</p>
-          </header>
-          {!session ? (
-            <div className="explore-empty card">
-              <Globe2 size={36} />
-              <h3>Sign in to explore</h3>
-              <p>Community intentions are available to signed-in members.</p>
-              <button className="save-button" type="button" onClick={() => openAuthModal('signin')}>Sign in</button>
-            </div>
-          ) : communityLoading ? (
-            <p className="starred-status">Loading community intentions…</p>
-          ) : communityError ? (
-            <p className="intention-alert">{communityError}</p>
-          ) : communityIntentions.length === 0 ? (
-            <div className="explore-empty card"><Globe2 size={36} /><h3>No public intentions yet</h3><p>Be the first to share one.</p></div>
-          ) : (
-            <div className="community-grid">
-              {communityIntentions.map((item) => (
-                <article className="community-intention-card" key={item.id}>
-                  <p>“{item.text}”</p>
-                  <button
-                    type="button"
-                    className={`star-action ${isTextStarred(item.text) ? 'active' : ''}`}
-                    aria-label={isTextStarred(item.text) ? 'Unstar intention' : 'Star intention'}
-                    onClick={(event) => starIntentionText(event, item.text)}
-                  >
-                    <Star size={20} fill={isTextStarred(item.text) ? 'currentColor' : 'none'} />
-                  </button>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-      ) : (
-      <section className="content-stack">
-        <article className="card intention-card">
-          <div className="intention-content">
-            <div className="intention-heading">
-              <p className="eyebrow">TODAY’S INTENTION</p>
-              <button
-                className="intention-edit-button"
-                type="button"
-                aria-label="Choose today’s intention"
-                onClick={() => {
+      {activeTab === 'Today' && (
+        <section className="content-stack">
+          <article className="card intention-card">
+            <div className="intention-content">
+              <div className="intention-heading">
+                <p className="eyebrow">TODAY’S INTENTION</p>
+                <button className="intention-edit-button" type="button" aria-label="Choose today’s intention" onClick={() => {
                   setIntentionDraft(intention);
                   setIntentionFilter('recommended');
                   setIntentionError('');
                   setShareCustomIntention(false);
                   setIsIntentionModalOpen(true);
-                }}
-              >
-                <Pencil size={21} strokeWidth={1.7} />
-              </button>
-            </div>
-            <blockquote>“{intention}”</blockquote>
-          </div>
-          <div className="botanical"><Leaf size={92} strokeWidth={1.1} /></div>
-        </article>
-
-        <article className="card practice-card">
-          <p className="eyebrow">TODAY’S PRACTICE</p>
-          <div className="practice-row">
-            <div className="round-icon"><TreePine size={50} strokeWidth={1.5} /></div>
-            <div className="practice-copy">
-              <h2>Awe Walk</h2>
-              <p>Take a slow walk outside and notice one thing that fills you with awe.</p>
-              <div className="meta-row">
-                <span><Timer size={21} /> 5–15 min</span>
-                <i />
-                <span><Leaf size={21} /> Cultivates wonder</span>
+                }}><Pencil size={21} strokeWidth={1.7} /></button>
               </div>
+              <blockquote>“{intention}”</blockquote>
             </div>
-            <ChevronRight className="chevron" size={35} strokeWidth={1.6} />
-          </div>
-          <button className={`primary-button ${practiceDone ? 'done' : ''}`} onClick={togglePractice}>
-            {practiceText}
-          </button>
-        </article>
+            <div className="botanical"><Leaf size={92} strokeWidth={1.1} /></div>
+          </article>
 
-        <article className="card reflection-card">
-          <div className="reflection-heading">
-            <div>
-              <p className="eyebrow">EVENING REFLECTION</p>
-              <h2>How did today change you?</h2>
+          <article className="card practice-card">
+            <p className="eyebrow">TODAY’S PRACTICE</p>
+            <div className="practice-row">
+              <div className="round-icon"><TreePine size={50} strokeWidth={1.5} /></div>
+              <div className="practice-copy"><h2>Awe Walk</h2><p>Take a slow walk outside and notice one thing that fills you with awe.</p><div className="meta-row"><span><Timer size={21} /> 5–15 min</span><i /><span><Leaf size={21} /> Cultivates wonder</span></div></div>
+              <ChevronRight className="chevron" size={35} strokeWidth={1.6} />
             </div>
-            <button className="edit-button" aria-label="Write reflection"><Pencil size={31} strokeWidth={1.6} /></button>
-          </div>
-          <p className="rate-label">Rate today</p>
-          <div className="mood-row">
-            {moods.map((mood) => (
-              <button
-                className={`mood ${selectedMood === mood.label ? 'selected' : ''}`}
-                key={mood.label}
-                onClick={() => saveMood(mood.label)}
-              >
-                <span className="mood-face">{mood.face}</span>
-                <span>{mood.label}</span>
-              </button>
-            ))}
-          </div>
-        </article>
+            <button className={`primary-button ${practiceDone ? 'done' : ''}`} onClick={togglePractice}>{practiceText}</button>
+          </article>
 
-        <article className="card journey-card">
-          <p className="eyebrow">YOUR JOURNEY</p>
-          <div className="journey-grid">
-            <div className="journey-item">
-              <Flame size={35} strokeWidth={1.4} />
-              <strong>17</strong>
-              <span>day streak</span>
-            </div>
-            <div className="journey-item middle">
-              <Sprout size={35} strokeWidth={1.4} />
-              <strong>237</strong>
-              <span>practices completed</span>
-            </div>
-            <div className="journey-item meaning">
-              <Mountain size={35} strokeWidth={1.4} />
-              <b>Meaning Score</b>
-              <div className="score-bars">{Array.from({ length: 10 }).map((_, index) => <span key={index} className={index < 8 ? 'filled' : ''} />)}</div>
-              <small>8.2 / 10</small>
-            </div>
-          </div>
-        </article>
+          <article className="card reflection-card">
+            <div className="reflection-heading"><div><p className="eyebrow">EVENING REFLECTION</p><h2>How did today change you?</h2></div><button className="edit-button" aria-label="Write reflection" onClick={() => setActiveTab('Wonder')}><Pencil size={31} strokeWidth={1.6} /></button></div>
+            <p className="rate-label">Rate today</p>
+            <div className="mood-row">{moods.map((mood) => <button className={`mood ${selectedMood === mood.label ? 'selected' : ''}`} key={mood.label} onClick={() => saveMood(mood.label)}><span className="mood-face">{mood.face}</span><span>{mood.label}</span></button>)}</div>
+          </article>
 
-        <article className="quote-card">
-          <Quote size={39} strokeWidth={1.6} />
-          <div>
-            <p>We are a way for the cosmos<br />to know itself.</p>
-            <span>— Carl Sagan</span>
-          </div>
-        </article>
-      </section>
+          <article className="card journey-card"><p className="eyebrow">YOUR JOURNEY</p><div className="journey-grid"><div className="journey-item"><Flame size={35} strokeWidth={1.4} /><strong>17</strong><span>day streak</span></div><div className="journey-item middle"><Sprout size={35} strokeWidth={1.4} /><strong>237</strong><span>practices completed</span></div><div className="journey-item meaning"><Mountain size={35} strokeWidth={1.4} /><b>Meaning Score</b><div className="score-bars">{Array.from({ length: 10 }).map((_, index) => <span key={index} className={index < 8 ? 'filled' : ''} />)}</div><small>8.2 / 10</small></div></div></article>
+          <article className="quote-card"><Quote size={39} strokeWidth={1.6} /><div><p>We are a way for the cosmos<br />to know itself.</p><span>— Carl Sagan</span></div></article>
+        </section>
+      )}
 
+      {activeTab === 'Practice' && (
+        <section className="app-page">
+          <header className="page-heading"><p className="eyebrow">PRACTICE LIBRARY</p><h2>Ways to practice attention and meaning</h2><p>Choose something that fits the time and energy you have today.</p></header>
+          {practicesLoading ? <p className="page-status">Loading practices…</p> : pageError ? <p className="intention-alert">{pageError}</p> : (
+            <div className="practice-library-grid">{practices.map((item) => <article className="library-card" key={item.id}><div className="library-icon"><Sprout size={28} /></div><div><span className="category-chip">{item.category}</span><h3>{item.title}</h3><p>{item.description}</p><div className="library-meta"><span><Timer size={17} /> {item.duration_minutes} min</span>{item.benefit && <span><Leaf size={17} /> {item.benefit}</span>}</div><details><summary>How to practice</summary><p>{item.instructions}</p></details></div></article>)}</div>
+          )}
+        </section>
+      )}
+
+      {activeTab === 'Commonplace' && (
+        <section className="app-page">
+          <header className="page-heading"><p className="eyebrow">COMMONPLACE BOOK</p><h2>Keep the words you want to live with</h2><p>Save passages, ideas, and your own notes about why they matter.</p></header>
+          {!session ? <div className="page-empty card"><BookOpen size={34} /><h3>Sign in to build your commonplace book</h3><button className="save-button" onClick={() => openAuthModal('signin')}>Sign in</button></div> : <>
+            <form className="page-form card" onSubmit={addCommonplaceEntry}><label>Quote or passage<textarea value={commonplaceForm.quote_text} onChange={(e) => setCommonplaceForm((v) => ({...v, quote_text:e.target.value}))} required /></label><div className="form-row"><label>Author<input value={commonplaceForm.author} onChange={(e) => setCommonplaceForm((v) => ({...v, author:e.target.value}))} /></label><label>Source<input value={commonplaceForm.source_title} onChange={(e) => setCommonplaceForm((v) => ({...v, source_title:e.target.value}))} /></label></div><label>Your reflection<textarea value={commonplaceForm.reflection} onChange={(e) => setCommonplaceForm((v) => ({...v, reflection:e.target.value}))} /></label><button className="auth-submit" disabled={pageSubmitting}><Plus size={18} /> Save passage</button></form>
+            {pageError && <p className="intention-alert">{pageError}</p>}
+            <div className="entry-list">{commonplaceEntries.length === 0 ? <p className="page-status">Your saved passages will appear here.</p> : commonplaceEntries.map((entry) => <article className="entry-card" key={entry.id}><button className="entry-delete" onClick={() => removeCommonplaceEntry(entry.id)}><Trash2 size={17}/></button><blockquote>“{entry.quote_text}”</blockquote><p className="entry-source">{entry.author || 'Unknown'}{entry.source_title ? ` · ${entry.source_title}` : ''}</p>{entry.reflection && <p>{entry.reflection}</p>}</article>)}</div>
+          </>}
+        </section>
+      )}
+
+      {activeTab === 'Wonder' && (
+        <section className="app-page">
+          <header className="page-heading"><p className="eyebrow">WONDER & REFLECTION</p><h2>Notice what makes life feel larger</h2><p>Record awe, gratitude, secular prayer, or an honest reflection.</p></header>
+          <div className="prompt-strip"><button onClick={() => {setWonderType('awe');setWonderDraft('Something that filled me with awe today was…')}}>Awe</button><button onClick={() => {setWonderType('gratitude');setWonderDraft('I am grateful for…')}}>Gratitude</button><button onClick={() => {setWonderType('prayer');setWonderDraft('May I…')}}>Secular prayer</button><button onClick={() => {setWonderType('freeform');setWonderDraft('')}}>Free write</button></div>
+          {!session ? <div className="page-empty card"><Sparkles size={34}/><h3>Sign in to keep your reflections</h3><button className="save-button" onClick={() => openAuthModal('signin')}>Sign in</button></div> : <>
+            <form className="page-form card" onSubmit={addWonderEntry}><label>Entry type<select value={wonderType} onChange={(e) => setWonderType(e.target.value)}><option value="awe">Awe</option><option value="gratitude">Gratitude</option><option value="prayer">Secular prayer</option><option value="freeform">Freeform</option></select></label><label>Write<textarea value={wonderDraft} onChange={(e) => setWonderDraft(e.target.value)} placeholder="What did you notice?" required /></label><button className="auth-submit" disabled={pageSubmitting}><Plus size={18}/> Save reflection</button></form>
+            {pageError && <p className="intention-alert">{pageError}</p>}
+            <div className="entry-list">{wonderEntries.length === 0 ? <p className="page-status">Your reflections will appear here.</p> : wonderEntries.map((entry) => <article className="entry-card" key={entry.id}><span className="category-chip">{entry.entry_type}</span><p>{entry.body}</p><small>{new Date(entry.created_at).toLocaleDateString()}</small></article>)}</div>
+          </>}
+        </section>
+      )}
+
+      {activeTab === 'Me' && (
+        <section className="app-page profile-page">
+          <header className="page-heading"><p className="eyebrow">YOUR PROFILE</p><h2>{session ? userName : 'Your journey'}</h2><p>Manage your saved intentions and account.</p></header>
+          {!session ? <div className="page-empty card"><CircleUserRound size={38}/><h3>Sign in to see your profile</h3><button className="save-button" onClick={() => openAuthModal('signin')}>Sign in</button></div> : <>
+            <article className="profile-card card"><CircleUserRound size={46}/><div><h3>{userName}</h3><p>{session.user.email}</p></div><button className="secondary-button" onClick={signOut}><LogOut size={17}/> Sign out</button></article>
+            <div className="profile-stats"><article className="card"><strong>{starredIntentions.length}</strong><span>starred intentions</span></article><article className="card"><strong>{starredIntentions.filter((item) => item.is_public).length}</strong><span>shared publicly</span></article><article className="card"><strong>{commonplaceEntries.length}</strong><span>saved passages</span></article></div>
+            <section className="profile-section"><h3>Your intentions</h3>{starredIntentions.length === 0 ? <p className="page-status">No starred intentions yet.</p> : starredIntentions.map((item) => <div className="profile-intention" key={item.id}><span>“{item.text}”</span><button className={`visibility-button ${item.is_public ? 'public' : ''}`} onClick={() => updateIntentionVisibility(item, !item.is_public)}>{item.is_public ? 'Public' : 'Private'}</button></div>)}</section>
+          </>}
+        </section>
       )}
       {isIntentionModalOpen && (
         <div className="modal-backdrop" role="presentation" onMouseDown={closeIntentionModal}>
@@ -724,7 +776,7 @@ function App() {
       <nav className="bottom-nav" aria-label="Primary navigation">
         {[
           ['Today', Home], ['Practice', Sprout], ['Commonplace', BookOpen],
-          ['Wonder', Sparkles], ['Explore', Globe2], ['Me', CircleUserRound]
+          ['Wonder', Sparkles], ['Me', CircleUserRound]
         ].map(([label, Icon]) => (
           <button key={label} className={activeTab === label ? 'active' : ''} onClick={() => label === 'Me' && !session ? openAuthModal('signin') : setActiveTab(label)}>
             <Icon size={28} strokeWidth={1.7} />
