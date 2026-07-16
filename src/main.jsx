@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   Bell, BookOpen, ChevronRight, CircleUserRound, Flame, Home, Leaf,
-  LogIn, LogOut, Menu, Mountain, Pencil, Quote, Sparkles, Sprout, Star, Sun,
+  Globe2, LogIn, LogOut, Menu, Mountain, Pencil, Quote, Sparkles, Sprout, Star, Sun,
   Timer, Trash2, TreePine, UsersRound, X
 } from 'lucide-react';
 import { supabase } from './lib/supabase';
@@ -45,6 +45,10 @@ function App() {
   const [starredIntentions, setStarredIntentions] = useState([]);
   const [starredLoading, setStarredLoading] = useState(false);
   const [intentionError, setIntentionError] = useState('');
+  const [shareCustomIntention, setShareCustomIntention] = useState(false);
+  const [communityIntentions, setCommunityIntentions] = useState([]);
+  const [communityLoading, setCommunityLoading] = useState(false);
+  const [communityError, setCommunityError] = useState('');
 
   useEffect(() => {
     const handler = (event) => {
@@ -88,7 +92,7 @@ function App() {
 
     supabase
       .from('starred_intentions')
-      .select('id, text, created_at')
+      .select('id, text, created_at, is_public')
       .order('created_at', { ascending: false })
       .then(({ data, error }) => {
         if (!active) return;
@@ -101,6 +105,26 @@ function App() {
       active = false;
     };
   }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (activeTab !== 'Explore' || !session?.user) return;
+    let active = true;
+    setCommunityLoading(true);
+    setCommunityError('');
+    supabase
+      .from('starred_intentions')
+      .select('id, user_id, text, created_at')
+      .eq('is_public', true)
+      .order('created_at', { ascending: false })
+      .limit(100)
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) setCommunityError(error.message);
+        else setCommunityIntentions(data || []);
+        setCommunityLoading(false);
+      });
+    return () => { active = false; };
+  }, [activeTab, session?.user?.id]);
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
@@ -151,8 +175,8 @@ function App() {
       if (!existing) {
         const { data, error } = await supabase
           .from('starred_intentions')
-          .insert({ user_id: session.user.id, text: next })
-          .select('id, text, created_at')
+          .insert({ user_id: session.user.id, text: next, is_public: shareCustomIntention })
+          .select('id, text, created_at, is_public')
           .single();
 
         if (error) {
@@ -169,12 +193,14 @@ function App() {
 
     setIntention(next);
     localStorage.setItem('groundedIntention', next);
+    setShareCustomIntention(false);
     setIsIntentionModalOpen(false);
   }
 
   function closeIntentionModal() {
     setIntentionDraft(intention);
     setIntentionError('');
+    setShareCustomIntention(false);
     setIsIntentionModalOpen(false);
   }
 
@@ -199,6 +225,40 @@ function App() {
 
     setStarredIntentions((current) => current.filter((saved) => saved.id !== item.id));
     if (intentionDraft === item.text) setIntentionDraft('');
+  }
+
+  function isTextStarred(text) {
+    return starredIntentions.some((item) => item.text.toLocaleLowerCase() === text.toLocaleLowerCase());
+  }
+
+  async function starIntentionText(event, text) {
+    event?.stopPropagation();
+    if (!session?.user) { openAuthModal('signin'); return; }
+    const existing = starredIntentions.find((item) => item.text.toLocaleLowerCase() === text.toLocaleLowerCase());
+    if (existing) {
+      const { error } = await supabase.from('starred_intentions').delete().eq('id', existing.id);
+      if (error) { setIntentionError(error.message); setCommunityError(error.message); return; }
+      setStarredIntentions((current) => current.filter((item) => item.id !== existing.id));
+      return;
+    }
+    const { data, error } = await supabase
+      .from('starred_intentions')
+      .insert({ user_id: session.user.id, text, is_public: false })
+      .select('id, text, created_at, is_public')
+      .single();
+    if (error) { setIntentionError(error.message); setCommunityError(error.message); return; }
+    setStarredIntentions((current) => [data, ...current]);
+  }
+
+  async function updateIntentionVisibility(item, isPublic) {
+    const { data, error } = await supabase
+      .from('starred_intentions')
+      .update({ is_public: isPublic })
+      .eq('id', item.id)
+      .select('id, text, created_at, is_public')
+      .single();
+    if (error) { setIntentionError(error.message); return; }
+    setStarredIntentions((current) => current.map((saved) => saved.id === item.id ? data : saved));
   }
 
   function togglePractice() {
@@ -323,6 +383,45 @@ function App() {
         </div>
       </section>
 
+      {activeTab === 'Explore' ? (
+        <section className="explore-page">
+          <header className="explore-heading">
+            <p className="eyebrow">COMMUNITY INTENTIONS</p>
+            <h2>Explore what is guiding others</h2>
+            <p>Public intentions shared by members of the community. Star one to keep a private copy.</p>
+          </header>
+          {!session ? (
+            <div className="explore-empty card">
+              <Globe2 size={36} />
+              <h3>Sign in to explore</h3>
+              <p>Community intentions are available to signed-in members.</p>
+              <button className="save-button" type="button" onClick={() => openAuthModal('signin')}>Sign in</button>
+            </div>
+          ) : communityLoading ? (
+            <p className="starred-status">Loading community intentions…</p>
+          ) : communityError ? (
+            <p className="intention-alert">{communityError}</p>
+          ) : communityIntentions.length === 0 ? (
+            <div className="explore-empty card"><Globe2 size={36} /><h3>No public intentions yet</h3><p>Be the first to share one.</p></div>
+          ) : (
+            <div className="community-grid">
+              {communityIntentions.map((item) => (
+                <article className="community-intention-card" key={item.id}>
+                  <p>“{item.text}”</p>
+                  <button
+                    type="button"
+                    className={`star-action ${isTextStarred(item.text) ? 'active' : ''}`}
+                    aria-label={isTextStarred(item.text) ? 'Unstar intention' : 'Star intention'}
+                    onClick={(event) => starIntentionText(event, item.text)}
+                  >
+                    <Star size={20} fill={isTextStarred(item.text) ? 'currentColor' : 'none'} />
+                  </button>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      ) : (
       <section className="content-stack">
         <article className="card intention-card">
           <div className="intention-content">
@@ -336,6 +435,7 @@ function App() {
                   setIntentionDraft(intention);
                   setIntentionFilter('recommended');
                   setIntentionError('');
+                  setShareCustomIntention(false);
                   setIsIntentionModalOpen(true);
                 }}
               >
@@ -421,6 +521,7 @@ function App() {
         </article>
       </section>
 
+      )}
       {isIntentionModalOpen && (
         <div className="modal-backdrop" role="presentation" onMouseDown={closeIntentionModal}>
           <section className="intention-modal" role="dialog" aria-modal="true" aria-labelledby="intention-modal-title" onMouseDown={(event) => event.stopPropagation()}>
@@ -457,9 +558,19 @@ function App() {
             {intentionFilter === 'recommended' ? (
               <div className="suggestion-grid" aria-label="Recommended intentions">
                 {intentionSuggestions.map((suggestion) => (
-                  <button type="button" key={suggestion} className={`suggestion-card ${intentionDraft === suggestion ? 'selected' : ''}`} onClick={() => chooseSuggestedIntention(suggestion)}>
-                    “{suggestion}”
-                  </button>
+                  <div className={`suggestion-card ${intentionDraft === suggestion ? 'selected' : ''}`} key={suggestion}>
+                    <button type="button" className="suggestion-select" onClick={() => chooseSuggestedIntention(suggestion)}>
+                      “{suggestion}”
+                    </button>
+                    <button
+                      type="button"
+                      className={`star-action ${isTextStarred(suggestion) ? 'active' : ''}`}
+                      aria-label={isTextStarred(suggestion) ? 'Unstar intention' : 'Star intention'}
+                      onClick={(event) => starIntentionText(event, suggestion)}
+                    >
+                      <Star size={18} fill={isTextStarred(suggestion) ? 'currentColor' : 'none'} />
+                    </button>
+                  </div>
                 ))}
               </div>
             ) : (
@@ -484,6 +595,13 @@ function App() {
                         <Star size={16} fill="currentColor" />
                         <span>“{item.text}”</span>
                       </button>
+                      <button
+                        type="button"
+                        className={`visibility-button ${item.is_public ? 'public' : ''}`}
+                        onClick={(event) => { event.stopPropagation(); updateIntentionVisibility(item, !item.is_public); }}
+                      >
+                        {item.is_public ? 'Public' : 'Private'}
+                      </button>
                       <button type="button" className="starred-delete" aria-label={`Remove ${item.text}`} onClick={(event) => removeStarredIntention(event, item)}>
                         <Trash2 size={18} />
                       </button>
@@ -496,6 +614,10 @@ function App() {
             <form className="modal-custom-form" onSubmit={saveIntention}>
               <label htmlFor="custom-intention">Write your own</label>
               <textarea id="custom-intention" value={intentionDraft} onChange={(event) => { setIntentionDraft(event.target.value); setIntentionError(''); }} maxLength={140} rows={3} placeholder="Today, I will…" autoFocus />
+              <label className="community-toggle">
+                <input type="checkbox" checked={shareCustomIntention} onChange={(event) => setShareCustomIntention(event.target.checked)} />
+                <span><strong>Share with the community</strong><small>Anyone signed in can discover this intention. You can make it private later.</small></span>
+              </label>
               {intentionError && <p className="intention-alert" role="alert">{intentionError}</p>}
               <div className="modal-footer">
                 <span>{intentionDraft.length}/140</span>
@@ -556,7 +678,7 @@ function App() {
       <nav className="bottom-nav" aria-label="Primary navigation">
         {[
           ['Today', Home], ['Practice', Sprout], ['Commonplace', BookOpen],
-          ['Wonder', Sparkles], ['Community', UsersRound], ['Me', CircleUserRound]
+          ['Wonder', Sparkles], ['Explore', Globe2], ['Me', CircleUserRound]
         ].map(([label, Icon]) => (
           <button key={label} className={activeTab === label ? 'active' : ''} onClick={() => label === 'Me' && !session ? openAuthModal('signin') : setActiveTab(label)}>
             <Icon size={28} strokeWidth={1.7} />
