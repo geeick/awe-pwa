@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   Bell, BookOpen, ChevronRight, CircleUserRound, Flame, Home, Leaf,
@@ -27,7 +27,6 @@ const moods = [
 
 function App() {
   const [selectedMood, setSelectedMood] = useState(() => localStorage.getItem('groundedMood') || '');
-  const [practiceDone, setPracticeDone] = useState(() => localStorage.getItem('groundedPracticeDone') === 'true');
   const [activeTab, setActiveTab] = useState('Today');
   const [intention, setIntention] = useState(() => localStorage.getItem('groundedIntention') || 'I will pay attention to beauty.');
   const [intentionDraft, setIntentionDraft] = useState(intention);
@@ -258,7 +257,6 @@ function App() {
     }
   }, []);
 
-  const practiceText = useMemo(() => practiceDone ? 'Practice Completed' : 'Start Practice', [practiceDone]);
   const userName = session?.user?.user_metadata?.display_name || session?.user?.email?.split('@')[0] || 'there';
 
   function saveMood(label) {
@@ -423,13 +421,6 @@ function App() {
     setPageSubmitting(false);
   }
 
-  function togglePractice() {
-    const next = !practiceDone;
-    setPracticeDone(next);
-    localStorage.setItem('groundedPracticeDone', String(next));
-  }
-
-
   function startPracticeSession(practice) {
     if (!session?.user) {
       openAuthModal('signin');
@@ -439,6 +430,36 @@ function App() {
     setPracticeSessionNotes('');
     setPracticeSessionPhotos([]);
     setPracticeSessionError('');
+  }
+
+
+  async function startTodaysPractice() {
+    if (!session?.user) {
+      openAuthModal('signin');
+      return;
+    }
+
+    setPageError('');
+    const cachedAweWalk = practices.find((practice) => practice.title === 'Awe Walk');
+    if (cachedAweWalk) {
+      startPracticeSession(cachedAweWalk);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('practices')
+      .select('id, title, description, instructions, category, duration_minutes, benefit, icon')
+      .eq('title', 'Awe Walk')
+      .eq('is_active', true)
+      .single();
+
+    if (error) {
+      setPageError(error.message);
+      return;
+    }
+
+    setPractices((current) => current.some((practice) => practice.id === data.id) ? current : [data, ...current]);
+    startPracticeSession(data);
   }
 
   function closePracticeSession() {
@@ -657,7 +678,8 @@ function App() {
               <div className="practice-copy"><h2>Awe Walk</h2><p>Take a slow walk outside and notice one thing that fills you with awe.</p><div className="meta-row"><span><Timer size={21} /> 5–15 min</span><i /><span><Leaf size={21} /> Cultivates wonder</span></div></div>
               <ChevronRight className="chevron" size={35} strokeWidth={1.6} />
             </div>
-            <button className={`primary-button ${practiceDone ? 'done' : ''}`} onClick={togglePractice}>{practiceText}</button>
+            <button className="primary-button" type="button" onClick={startTodaysPractice}>Start Practice</button>
+            {pageError && <p className="intention-alert" role="alert">{pageError}</p>}
           </article>
 
           <article className="card reflection-card">
