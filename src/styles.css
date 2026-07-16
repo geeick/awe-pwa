@@ -38,10 +38,10 @@ button { font: inherit; }
 .topbar { position: relative; z-index: 5; display: flex; justify-content: space-between; padding: calc(20px + env(safe-area-inset-top)) 26px 0; }
 .icon-button { border: 0; background: transparent; color: #26332e; padding: 8px; cursor: pointer; }
 .welcome { position: relative; z-index: 5; padding: 18px 34px 0; }
-.greeting-row { display: flex; align-items: center; gap: 10px; }
-.welcome h1 { margin: 0; font-family: 'Libre Baskerville', serif; font-size: clamp(29px, 8vw, 40px); line-height: 1.16; letter-spacing: -.03em; }
-.welcome p { font-size: 17px; margin: 9px 0 0; color: #4f5b56; }
-.sun-icon { color: #dc913a; flex: 0 0 auto; }
+.greeting-row { display: flex; align-items: flex-start; gap: 10px; }
+.welcome h1 { margin: 0; max-width: 14ch; font-family: 'Libre Baskerville', serif; font-size: clamp(29px, 8vw, 40px); line-height: 1.16; letter-spacing: -.03em; text-wrap: balance; }
+.welcome p { width: fit-content; max-width: 100%; font-size: 17px; font-weight: 600; margin: 10px 0 0 -9px; padding: 5px 10px; color: #2f463a; background: rgba(249,245,238,.68); border: 1px solid rgba(49,93,69,.09); border-radius: 999px; box-shadow: 0 3px 14px rgba(38,51,46,.08); backdrop-filter: blur(5px); }
+.sun-icon { color: #dc913a; flex: 0 0 auto; margin-top: .18em; }
 .install-chip { margin-top: 14px; border: 1px solid rgba(49,93,69,.22); background: rgba(249,245,238,.88); color: var(--green-dark); padding: 8px 13px; border-radius: 999px; font-weight: 700; }
 
 .content-stack { position: relative; z-index: 10; margin-top: -88px; padding: 0 24px 24px; display: grid; gap: 14px; }
@@ -105,8 +105,8 @@ button { font: inherit; }
   .journey-item { padding-inline: 5px; }
 }
 
-/* Desktop and tablet layout: keep the phone experience intact below 768px,
-   but use the available screen instead of stretching a phone-shaped column. */
+/* Tablet and desktop layout. The sidebar appears at 768px, but the
+   dashboard stays single-column until there is enough room for two healthy cards. */
 @media (min-width: 768px) {
   body {
     background: #e7e1d7;
@@ -116,6 +116,8 @@ button { font: inherit; }
     width: 100%;
     max-width: none;
     min-height: 100vh;
+    margin: 0;
+    padding-left: 104px;
     padding-bottom: 0;
     overflow: visible;
     box-shadow: none;
@@ -123,12 +125,13 @@ button { font: inherit; }
   }
 
   .hero {
-    height: 430px;
-    padding-left: 104px;
+    height: 480px;
   }
 
   .topbar {
-    padding: 28px 42px 0 132px;
+    position: absolute;
+    inset: 0 0 auto;
+    padding: 28px 38px 0;
   }
 
   .topbar .icon-button:first-child {
@@ -136,60 +139,67 @@ button { font: inherit; }
   }
 
   .welcome {
-    width: min(1180px, calc(100% - 96px));
+    width: min(760px, calc(100% - 48px));
     margin: 0 auto;
-    padding: 52px 32px 0;
+    padding: 70px 24px 0;
   }
 
   .welcome h1 {
-    max-width: 720px;
-    font-size: clamp(44px, 5vw, 68px);
+    max-width: 13ch;
+    font-size: clamp(43px, 6.2vw, 60px);
     line-height: 1.08;
   }
 
   .welcome p {
-    font-size: 20px;
+    font-size: 18px;
+    margin-top: 14px;
   }
 
   .mountain {
-    width: 112%;
-    left: -6%;
+    width: 116%;
+    left: -8%;
   }
 
   .content-stack {
-    width: min(1180px, calc(100% - 160px));
-    margin: -110px auto 0;
-    padding: 0 32px 56px;
-    grid-template-columns: repeat(12, minmax(0, 1fr));
+    width: min(760px, calc(100% - 48px));
+    margin: -72px auto 0;
+    padding: 0 0 56px;
+    grid-template-columns: minmax(0, 1fr);
     gap: 20px;
     align-items: start;
   }
 
+  .intention-card,
+  .practice-card,
+  .reflection-card,
+  .journey-card,
+  .quote-card {
+    grid-column: 1;
+  }
+
   .intention-card {
-    grid-column: span 7;
     min-height: 206px;
     padding: 34px;
   }
 
   .intention-card blockquote {
-    font-size: clamp(30px, 3vw, 42px);
+    font-size: clamp(30px, 4vw, 40px);
   }
 
   .practice-card {
-    grid-column: span 5;
-    grid-row: span 2;
-    min-height: 432px;
-    padding: 30px;
+    grid-row: auto;
+    min-height: 0;
+    padding: 30px 34px;
   }
 
   .practice-row {
-    grid-template-columns: 88px 1fr 24px;
-    margin-top: 24px;
+    grid-template-columns: 82px minmax(0, 1fr) 24px;
+    margin-top: 16px;
   }
 
   .round-icon {
-    width: 88px;
-    height: 88px;
+    width: 82px;
+    height: 82px;
   }
 
   .practice-copy h2 {
@@ -201,22 +211,19 @@ button { font: inherit; }
   }
 
   .primary-button {
-    margin-top: 36px;
+    margin-top: 28px;
   }
 
   .reflection-card {
-    grid-column: span 7;
     min-height: 206px;
     padding: 30px 34px;
   }
 
   .journey-card {
-    grid-column: span 7;
     padding: 28px 34px;
   }
 
   .quote-card {
-    grid-column: span 5;
     min-height: 188px;
     padding: 34px;
   }
@@ -251,14 +258,65 @@ button { font: inherit; }
   }
 }
 
-@media (min-width: 1180px) {
+/* Switch to the two-column dashboard only when the practice card can keep
+   readable line lengths instead of collapsing into a tall, narrow column. */
+@media (min-width: 1120px) {
+  .hero {
+    height: 500px;
+  }
+
+  .welcome {
+    width: min(1180px, calc(100% - 72px));
+    padding: 72px 32px 0;
+  }
+
+  .welcome h1 {
+    max-width: 13ch;
+    font-size: clamp(54px, 5vw, 72px);
+  }
+
+  .welcome p {
+    font-size: 20px;
+  }
+
   .content-stack {
+    width: min(1180px, calc(100% - 72px));
+    margin-top: -86px;
+    padding: 0 32px 56px;
     grid-template-columns: repeat(12, minmax(0, 1fr));
   }
 
-  .intention-card { grid-column: span 7; }
-  .practice-card { grid-column: span 5; }
-  .reflection-card { grid-column: span 7; }
-  .journey-card { grid-column: span 7; }
-  .quote-card { grid-column: span 5; }
+  .intention-card {
+    grid-column: span 7;
+  }
+
+  .practice-card {
+    grid-column: span 5;
+    grid-row: span 2;
+    min-height: 432px;
+    padding: 30px;
+  }
+
+  .practice-row {
+    grid-template-columns: 88px minmax(0, 1fr) 24px;
+    margin-top: 24px;
+  }
+
+  .round-icon {
+    width: 88px;
+    height: 88px;
+  }
+
+  .primary-button {
+    margin-top: 36px;
+  }
+
+  .reflection-card,
+  .journey-card {
+    grid-column: span 7;
+  }
+
+  .quote-card {
+    grid-column: span 5;
+  }
 }
