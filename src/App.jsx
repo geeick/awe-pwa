@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from './lib/supabase';
-import { intentionSuggestions } from './constants/intentions';
 import Hero from './components/layout/Hero';
 import Navigation from './components/layout/Navigation';
 import AuthModal from './components/auth/AuthModal';
@@ -22,9 +21,11 @@ function localDateKey(date = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
-function automaticIntentionForDate(dateKey) {
+function automaticIntentionForDate(dateKey, intentions) {
+  if (!intentions.length) return '';
+
   const numericDate = Number(dateKey.replaceAll('-', ''));
-  return intentionSuggestions[numericDate % intentionSuggestions.length];
+  return intentions[numericDate % intentions.length]?.text || '';
 }
 
 function App() {
@@ -32,9 +33,12 @@ function App() {
   const [reflectionDraft, setReflectionDraft] = useState('');
   const [reflectionSaving, setReflectionSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('Today');
-  const [intention, setIntention] = useState(() => automaticIntentionForDate(localDateKey()));
+  const [recommendedIntentions, setRecommendedIntentions] = useState([]);
+  const [intentionsLoading, setIntentionsLoading] = useState(true);
+  const [intentionsError, setIntentionsError] = useState('');
+  const [intention, setIntention] = useState('');
   const [dailyIntentionLoading, setDailyIntentionLoading] = useState(true);
-  const [intentionDraft, setIntentionDraft] = useState(intention);
+  const [intentionDraft, setIntentionDraft] = useState('');
   const [isIntentionModalOpen, setIsIntentionModalOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
   const [session, setSession] = useState(null);
@@ -105,6 +109,37 @@ function App() {
   }, []);
 
   useEffect(() => {
+    let active = true;
+
+    async function loadRecommendedIntentions() {
+      setIntentionsLoading(true);
+      setIntentionsError('');
+
+      const { data, error } = await supabase
+        .from('intentions')
+        .select('id, text, category, is_featured, sort_order, created_at')
+        .eq('is_active', true)
+        .order('is_featured', { ascending: false })
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true });
+
+      if (!active) return;
+
+      if (error) {
+        setRecommendedIntentions([]);
+        setIntentionsError(error.message);
+      } else {
+        setRecommendedIntentions(data || []);
+      }
+
+      setIntentionsLoading(false);
+    }
+
+    loadRecommendedIntentions();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
     let mounted = true;
 
     supabase.auth.getSession().then(({ data, error }) => {
@@ -127,14 +162,49 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (intentionsLoading) return undefined;
+
     let active = true;
     const today = localDateKey();
 
     async function loadDailyIntention() {
       setDailyIntentionLoading(true);
 
+      if (session?.user) {
+        const { data, error } = await supabase
+          .from('daily_intentions')
+          .select('intention_text, text')
+          .eq('user_id', session.user.id)
+          .eq('intention_date', today)
+          .maybeSingle();
+
+        if (!active) return;
+
+        if (error) {
+          setPageError(error.message);
+          setDailyIntentionLoading(false);
+          return;
+        }
+
+        const savedIntention = data?.intention_text || data?.text;
+        if (savedIntention) {
+          setIntention(savedIntention);
+          setIntentionDraft(savedIntention);
+          setDailyIntentionLoading(false);
+          return;
+        }
+      }
+
+      const automatic = automaticIntentionForDate(today, recommendedIntentions);
+      if (!automatic) {
+        if (active) {
+          setPageError(intentionsError || 'No active intentions are available.');
+          setDailyIntentionLoading(false);
+        }
+        return;
+      }
+
       if (!session?.user) {
-        const automatic = automaticIntentionForDate(today);
         if (active) {
           setIntention(automatic);
           setIntentionDraft(automatic);
@@ -143,30 +213,6 @@ function App() {
         return;
       }
 
-      const { data, error } = await supabase
-        .from('daily_intentions')
-        .select('intention_text, text')
-        .eq('user_id', session.user.id)
-        .eq('intention_date', today)
-        .maybeSingle();
-
-      if (!active) return;
-
-      if (error) {
-        setPageError(error.message);
-        setDailyIntentionLoading(false);
-        return;
-      }
-
-      const savedIntention = data?.intention_text || data?.text;
-      if (savedIntention) {
-        setIntention(savedIntention);
-        setIntentionDraft(savedIntention);
-        setDailyIntentionLoading(false);
-        return;
-      }
-
-      const automatic = automaticIntentionForDate(today);
       const { error: insertError } = await supabase
         .from('daily_intentions')
         .upsert(
@@ -194,7 +240,7 @@ function App() {
 
     loadDailyIntention();
     return () => { active = false; };
-  }, [session?.user?.id]);
+  }, [intentionsError, intentionsLoading, recommendedIntentions, session?.user?.id]);
 
   useEffect(() => {
     if (!session?.user) {
@@ -409,7 +455,10 @@ function App() {
     const next = intentionDraft.trim();
     if (!next) return;
 
-    const isRecommended = intentionSuggestions.includes(next);
+    const normalizedNext = next.toLocaleLowerCase();
+    const isRecommended = recommendedIntentions.some(
+      (item) => item.text.toLocaleLowerCase() === normalizedNext
+    );
 
     if (!isRecommended) {
       if (!session?.user) {
@@ -824,6 +873,9 @@ function App() {
         communityIntentions={communityIntentions}
         communityLoading={communityLoading}
         communityError={communityError}
+        suggestions={recommendedIntentions}
+        suggestionsLoading={intentionsLoading}
+        suggestionsError={intentionsError}
         shareCustomIntention={shareCustomIntention}
         intentionError={intentionError}
         onClose={closeIntentionModal}

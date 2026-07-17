@@ -1,5 +1,4 @@
 import { Globe2, Star, Trash2, X } from 'lucide-react';
-import { intentionSuggestions } from '../../constants/intentions';
 
 export default function IntentionModal({
   isOpen,
@@ -11,6 +10,9 @@ export default function IntentionModal({
   communityIntentions,
   communityLoading,
   communityError,
+  suggestions = [],
+  suggestionsLoading = false,
+  suggestionsError = '',
   shareCustomIntention,
   intentionError,
   onClose,
@@ -47,14 +49,22 @@ export default function IntentionModal({
 
         {filter === 'recommended' ? (
           <div className="suggestion-grid" aria-label="Recommended intentions">
-            {intentionSuggestions.map((suggestion) => (
-              <div className={`suggestion-card ${draft === suggestion ? 'selected' : ''}`} key={suggestion}>
-                <button type="button" className="suggestion-select" onClick={() => onChoose(suggestion)}>“{suggestion}”</button>
-                <button type="button" className={`star-action ${isTextStarred(suggestion) ? 'active' : ''}`} aria-label={isTextStarred(suggestion) ? 'Unstar intention' : 'Star intention'} onClick={(event) => onStarText(event, suggestion)}>
-                  <Star size={18} fill={isTextStarred(suggestion) ? 'currentColor' : 'none'} />
-                </button>
-              </div>
-            ))}
+            {suggestionsLoading ? (
+              <p className="starred-status">Loading intentions…</p>
+            ) : suggestionsError ? (
+              <p className="intention-alert" role="alert">{suggestionsError}</p>
+            ) : suggestions.length === 0 ? (
+              <div className="starred-empty"><Star size={28} /><p>No recommended intentions are available yet.</p></div>
+            ) : (
+              suggestions.map((suggestion) => (
+                <div className={`suggestion-card ${draft === suggestion.text ? 'selected' : ''}`} key={suggestion.id}>
+                  <button type="button" className="suggestion-select" onClick={() => onChoose(suggestion.text)}>“{suggestion.text}”</button>
+                  <button type="button" className={`star-action ${isTextStarred(suggestion.text) ? 'active' : ''}`} aria-label={isTextStarred(suggestion.text) ? 'Unstar intention' : 'Star intention'} onClick={(event) => onStarText(event, suggestion.text)}>
+                    <Star size={18} fill={isTextStarred(suggestion.text) ? 'currentColor' : 'none'} />
+                  </button>
+                </div>
+              ))
+            )}
           </div>
         ) : filter === 'starred' ? (
           <div className="starred-intention-list" aria-label="Starred intentions">
