@@ -1,11 +1,8 @@
-export const intentionSuggestions = [
-  'I will pay attention to beauty.',
-  'I will meet uncertainty with curiosity.',
-  'I will make room for wonder today.',
-  'I will respond with patience instead of reacting.',
-  'I will notice what is already enough.',
-  'I will leave people better than I found them.'
-];
+export const intentionSuggestions = [];
+
+export function setIntentionSuggestions(suggestions) {
+  intentionSuggestions.splice(0, intentionSuggestions.length, ...suggestions);
+}
 
 export const moods = [
   { label: 'Hard', face: '☹' },
